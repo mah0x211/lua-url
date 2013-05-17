@@ -22,6 +22,8 @@
 
 --]]
 
+local uriparser = require('uriparser');
+
 -- conversion table
 --[[ 
     0-9 
@@ -160,6 +162,7 @@ return {
     encode2396 = encode2396,
     decode2396 = decode2396,
     encode3986 = encode3986,
-    decode3986 = decode3986
+    decode3986 = decode3986,
+    parse = uriparser.parse
 };
 

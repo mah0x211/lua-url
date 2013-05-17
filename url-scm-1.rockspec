@@ -13,10 +13,26 @@ description = {
 dependencies = {
     "lua >= 5.1"
 }
+external_dependencies = {
+    URIPARSER = {
+        header = "uriparser/Uri.h",
+        library = "uriparser"
+    }
+}
 build = {
     type = "builtin",
     modules = {
-        url = "url.lua"
+        url = "url.lua",
+        uriparser = {
+            sources = { "uriparser_bind.c" },
+            libraries = { "uriparser" },
+            incdirs = { 
+                "$(URIPARSER_INCDIR)"
+            },
+            libdirs = { 
+                "$(URIPARSER_LIBDIR)"
+            }
+        }
     }
 }
 
