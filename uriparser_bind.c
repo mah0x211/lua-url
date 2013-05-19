@@ -89,14 +89,45 @@
     } \
 }while(0)
 
+
+static int parse_query( lua_State *L, const char *str, size_t len )
+{
+    UriQueryListA *qry = NULL;
+    int nqry = 0;
+    int rc = uriDissectQueryMallocA( &qry, &nqry, str, str + len );
+    
+    if( rc == URI_SUCCESS )
+    {
+        UriQueryListA *ptr = qry;
+        while( ptr )
+        {
+            if( ptr->key ){
+                lstate_str2tbl( L, ptr->key, ptr->value ? ptr->value : "" );
+            }
+            ptr = ptr->next;
+        }
+        uriFreeQueryListA( qry );
+    }
+    
+    return URI_SUCCESS;
+}
+
+
 static int parse_lua( lua_State *L )
 {
     int rc = 0;
+    int argc = lua_gettop( L );
     size_t len = 0;
     const char *url = luaL_checklstring( L, 1, &len );
+    int parseQry = 0;
     UriParserStateA state;
     UriUriA uri;
-        
+    
+    if( argc > 1 ){
+        luaL_argcheck( L, lua_isboolean( L, 2 ), 2, "must be boolean" );
+        parseQry = lua_toboolean( L, 2 );
+    }
+    
     // verify request-url
     state.uri = &uri;
     rc = uriParseUriA( &state, url );
@@ -147,32 +178,23 @@ static int parse_lua( lua_State *L )
         if( !uri.query.first ){
             lua_pushnil(L);
         }
+        // no query parse
+        else if( !parseQry ){
+            lstate_strn2tbl( L, "query", uri.query.first, 
+                             uri.query.afterLast - uri.query.first );
+            lua_pushnil(L);
+        }
         else
         {
-            UriQueryListA *qry = NULL;
-            int nqry = 0;
-            
-            rc = uriDissectQueryMallocA( &qry, &nqry, uri.query.first, 
-                                         uri.query.afterLast );
-            if( rc != URI_SUCCESS ){
-                lstate_pusherr( L, rc );
-            }
-            else
-            {
-                UriQueryListA *ptr = qry;
-                // create query-table(nested-table)
-                lstate_tbl2tbl_start( L, "query" );
-                while( ptr )
-                {
-                    if( ptr->key ){
-                        lstate_str2tbl( L, ptr->key, 
-                                         ptr->value ? ptr->value : "" );
-                    }
-                    ptr = ptr->next;
-                }
+            lstate_tbl2tbl_start( L, "query" );
+            rc = parse_query( L, uri.query.first, 
+                              uri.query.afterLast - uri.query.first );
+            if( rc == URI_SUCCESS ){
                 lstate_tbl2tbl_end( L );
                 lua_pushnil(L);
-                uriFreeQueryListA( qry );
+            }
+            else {
+                lstate_pusherr( L, rc );
             }
         }
     }
