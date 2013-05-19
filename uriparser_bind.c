@@ -203,6 +203,26 @@ static int parse_lua( lua_State *L )
     return 2;
 }
 
+
+static int parse_query_lua( lua_State *L )
+{
+    size_t len = 0;
+    const char *qry = luaL_checklstring( L, 1, &len );
+    int rc = 0;
+    
+    // create table
+    lua_newtable( L );
+    rc = parse_query( L, qry, len );
+    if( rc == URI_SUCCESS ){
+        lua_pushnil(L);
+    }
+    else {
+        lstate_pusherr( L, rc );
+    }
+    
+    return 2;
+}
+
 // make error
 static int const_newindex( lua_State *L ){
     return luaL_error( L, "attempting to change protected module" );
@@ -212,6 +232,7 @@ LUALIB_API int luaopen_uriparser( lua_State *L )
 {
     struct luaL_Reg funcs[] = {
         { "parse", parse_lua },
+        { "parseQuery", parse_query_lua },
         { NULL, NULL }
     };
     int i = 0;

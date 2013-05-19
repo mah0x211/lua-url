@@ -206,6 +206,7 @@ return {
     dirname = dirname,
     basename = basename,
     extname = extname,
-    parse = uriparser.parse
+    parse = uriparser.parse,
+    parseQuery = uriparser.parseQuery
 };
 
