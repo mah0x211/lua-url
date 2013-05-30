@@ -105,15 +105,18 @@ local TBL_ENC3986 = {
 
 local function encode( src, tbl )
     local dest = '';
-    local len = #src;
-    local code;
     
-    for i = 1, len, 1 do
-        code = string.byte( src, i );
-        if tbl[code] then
-            dest = dest .. string.char(code);
-        else
-            dest = dest .. '%' .. string.format( '%02X', code );
+    if type(src) == 'string' then
+        local len = #src;
+        local code;
+        
+        for i = 1, len, 1 do
+            code = string.byte( src, i );
+            if tbl[code] then
+                dest = dest .. string.char(code);
+            else
+                dest = dest .. '%' .. string.format( '%02X', code );
+            end
         end
     end
     
@@ -134,13 +137,17 @@ end
 
 
 local function decode( src, tbl )
-    return string.gsub( src, '%%([%x][%x])', function( hex )
-        local dec = tonumber( hex, 16 );
-        if tbl[dec] then
-            return '%' .. hex;
-        end
-        return string.char( dec );
-    end);
+    if type(src) == 'string' then
+        return string.gsub( src, '%%([%x][%x])', function( hex )
+            local dec = tonumber( hex, 16 );
+            if tbl[dec] then
+                return '%' .. hex;
+            end
+            return string.char( dec );
+        end);
+    end
+    
+    return '';
 end
 
 local function decodeURI( src )
