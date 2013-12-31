@@ -120,6 +120,7 @@ static int parse_lua( lua_State *L )
     int argc = lua_gettop( L );
     size_t len = 0;
     const char *url = luaL_checklstring( L, 1, &len );
+    const char *pathTail = url + len;
     int parseQry = 0;
     UriParserStateA state;
     UriUriA uri;
@@ -161,45 +162,51 @@ static int parse_lua( lua_State *L )
             lstate_strn2tbl( L, "port", uri.portText.first, 
                              uri.portText.afterLast - uri.portText.first );
         }
+        
+        // set fragment
+        if( uri.fragment.first ){
+            pathTail = uri.fragment.first - 1;
+            lstate_strn2tbl( L, "fragment", uri.fragment.first, 
+                             uri.fragment.afterLast - uri.fragment.first );
+        }
+        
+        // set query
+        if( uri.query.first )
+        {
+            pathTail = uri.query.first - 1;
+            // no query parse
+            if( !parseQry ){
+                lstate_strn2tbl( L, "query", uri.query.first, 
+                                 uri.query.afterLast - uri.query.first );
+            }
+            else
+            {
+                lstate_tbl2tbl_start( L, "query" );
+                rc = parse_query( L, uri.query.first, 
+                                  uri.query.afterLast - uri.query.first );
+                if( rc == URI_SUCCESS ){
+                    lstate_tbl2tbl_end( L );
+                }
+                else {
+                    lstate_pusherr( L, rc );
+                    goto CLEANUP;
+                }
+            }
+        }
+        
         // set path
         if( uri.pathHead ){
-            const char *head = uri.pathHead->text.first - 1;
-            lstate_strn2tbl( L, "path", head, len - 
-                             ( (uintptr_t)head - (uintptr_t)url ) );
+            const char *pathHead = uri.pathHead->text.first - 1;
+            lstate_strn2tbl( L, "path", pathHead, pathTail - pathHead - 1 );
         }
         else {
             lstate_strn2tbl( L, "path", "/", 1 );
         }
-        // set fragment
-        if( uri.fragment.first ){
-            lstate_strn2tbl( L, "fragment", uri.fragment.first, 
-                             uri.fragment.afterLast - uri.fragment.first );
-        }
-        // no query
-        if( !uri.query.first ){
-            lua_pushnil(L);
-        }
-        // no query parse
-        else if( !parseQry ){
-            lstate_strn2tbl( L, "query", uri.query.first, 
-                             uri.query.afterLast - uri.query.first );
-            lua_pushnil(L);
-        }
-        else
-        {
-            lstate_tbl2tbl_start( L, "query" );
-            rc = parse_query( L, uri.query.first, 
-                              uri.query.afterLast - uri.query.first );
-            if( rc == URI_SUCCESS ){
-                lstate_tbl2tbl_end( L );
-                lua_pushnil(L);
-            }
-            else {
-                lstate_pusherr( L, rc );
-            }
-        }
+        lua_pushnil(L);
     }
-    uriFreeUriMembersA( &uri );
+    
+    CLEANUP:
+        uriFreeUriMembersA( &uri );
     
     return 2;
 }
