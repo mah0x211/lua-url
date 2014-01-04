@@ -197,7 +197,7 @@ static int parse_lua( lua_State *L )
         // set path
         if( uri.pathHead ){
             const char *pathHead = uri.pathHead->text.first - 1;
-            lstate_strn2tbl( L, "path", pathHead, pathTail - pathHead - 1 );
+            lstate_strn2tbl( L, "path", pathHead, pathTail - pathHead );
         }
         else {
             lstate_strn2tbl( L, "path", "/", 1 );
