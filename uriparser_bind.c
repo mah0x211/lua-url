@@ -31,12 +31,6 @@
 #include <lualib.h>
 #include <uriparser/Uri.h>
 
-#define lstate_tbl2tbl_start(L,k) do{ \
-    lua_pushstring(L,k); \
-    lua_newtable(L); \
-}while(0)
-
-#define lstate_tbl2tbl_end(L)    lua_rawset(L,-3);
 
 #define lstate_str2tbl(L,k,v) do{ \
     lua_pushstring(L,k); \
@@ -57,8 +51,6 @@
 }while(0)
 
 #define lstate_pusherr(L,c) do{ \
-    lua_settop(L,0); \
-    lua_pushnil(L); \
     switch(c){ \
         case URI_ERROR_SYNTAX: \
             lua_pushstring(L,"Parsed text violates expected format"); \
@@ -79,14 +71,12 @@
             lua_pushstring(L,"The parameters passed contained invalid ranges"); \
         break; \
         case URI_ERROR_ADDBASE_REL_BASE: \
-            lua_pushstring(L,"Given base is not absolute"); \
-        break; \
         case URI_ERROR_REMOVEBASE_REL_BASE: \
-            lua_pushstring(L,"Given base is not absolute"); \
-        break; \
         case URI_ERROR_REMOVEBASE_REL_SOURCE: \
             lua_pushstring(L,"Given base is not absolute"); \
         break; \
+        default: \
+            lua_pushstring(L,"Unknwn error"); \
     } \
 }while(0)
 
@@ -100,6 +90,8 @@ static int parse_query( lua_State *L, const char *str, size_t len )
     if( rc == URI_SUCCESS )
     {
         UriQueryListA *ptr = qry;
+        
+        lua_newtable( L );
         while( ptr )
         {
             if( ptr->key ){
@@ -110,36 +102,35 @@ static int parse_query( lua_State *L, const char *str, size_t len )
         uriFreeQueryListA( qry );
     }
     
-    return URI_SUCCESS;
+    return rc;
 }
 
 
 static int parse_lua( lua_State *L )
 {
-    int rc = 0;
-    int argc = lua_gettop( L );
     size_t len = 0;
     const char *url = luaL_checklstring( L, 1, &len );
-    const char *pathTail = url + len;
     int parseQry = 0;
     UriParserStateA state;
     UriUriA uri;
+    int rc = 0;
     
-    if( argc > 1 ){
-        luaL_argcheck( L, lua_isboolean( L, 2 ), 2, "must be boolean" );
+    // check arguments
+    if( !lua_isnoneornil( L, 2 ) ){
+        luaL_checktype( L, 2, LUA_TBOOLEAN );
         parseQry = lua_toboolean( L, 2 );
     }
     
-    // verify request-url
+    // parse
     state.uri = &uri;
     rc = uriParseUriA( &state, url );
-    if( rc != URI_SUCCESS ){
-        lstate_pusherr( L, rc );
-    }
-    else
+    if( rc == URI_SUCCESS )
     {
+        const char *pathTail = url + len;
+        
         // create table
         lua_newtable( L );
+        
         // set absolutePath
         lstate_bool2tbl( L, "absolutePath", uri.absolutePath );
         // set scheme
@@ -181,15 +172,17 @@ static int parse_lua( lua_State *L )
             }
             else
             {
-                lstate_tbl2tbl_start( L, "query" );
+                lua_pushstring( L, "query" );
                 rc = parse_query( L, uri.query.first, 
                                   uri.query.afterLast - uri.query.first );
                 if( rc == URI_SUCCESS ){
-                    lstate_tbl2tbl_end( L );
+                    lua_rawset( L, -3 );
                 }
                 else {
-                    lstate_pusherr( L, rc );
-                    goto CLEANUP;
+                    lua_settop( L, 0 );
+                    // free
+                    uriFreeUriMembersA( &uri );
+                    goto PARSE_FAILURE;
                 }
             }
         }
@@ -202,11 +195,17 @@ static int parse_lua( lua_State *L )
         else {
             lstate_strn2tbl( L, "path", "/", 1 );
         }
-        lua_pushnil(L);
+        
+        // free
+        uriFreeUriMembersA( &uri );
+        
+        return 1;
     }
     
-    CLEANUP:
-        uriFreeUriMembersA( &uri );
+PARSE_FAILURE:
+    // got error
+    lua_pushnil( L );
+    lstate_pusherr( L, rc );
     
     return 2;
 }
@@ -216,25 +215,20 @@ static int parse_query_lua( lua_State *L )
 {
     size_t len = 0;
     const char *qry = luaL_checklstring( L, 1, &len );
-    int rc = 0;
+    int rc = parse_query( L, qry, len );
     
-    // create table
-    lua_newtable( L );
-    rc = parse_query( L, qry, len );
+    // success
     if( rc == URI_SUCCESS ){
-        lua_pushnil(L);
+        return 1;
     }
-    else {
-        lstate_pusherr( L, rc );
-    }
+    
+    // got error
+    lua_pushnil( L );
+    lstate_pusherr( L, rc );
     
     return 2;
 }
 
-// make error
-static int const_newindex( lua_State *L ){
-    return luaL_error( L, "attempting to change protected module" );
-}
 
 LUALIB_API int luaopen_url_parser( lua_State *L )
 {
@@ -245,29 +239,13 @@ LUALIB_API int luaopen_url_parser( lua_State *L )
     };
     int i = 0;
     
-    // create protected-table
     lua_newtable( L );
-    // create __metatable
-    lua_newtable( L );
-    // create substance
-    lua_pushstring( L, "__index" );
-    lua_newtable( L );
-    
     // set functions
     for( i = 0; funcs[i].name; i++ ){ 
         lua_pushstring( L, funcs[i].name );
         lua_pushcfunction( L, funcs[i].func );
         lua_rawset( L, -3 );
     }
-    
-    // set substance to __metable.__index field
-    lua_rawset( L, -3 );
-    // set __newindex function to __metable.__newindex filed
-    lua_pushstring( L, "__newindex" );
-    lua_pushcfunction( L, const_newindex );
-    lua_rawset( L, -3 );
-    // convert protected-table to metatable
-    lua_setmetatable( L, -2 );
     
     return 1;
 }
