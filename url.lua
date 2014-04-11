@@ -25,46 +25,6 @@
 local uriparser = require('url.parser');
 local codec = require('url.codec');
 
-
-local function normalize( ... )
-    local argv = {...};
-    local path = argv[1];
-    local seg = nil;
-    local res = {};
-    
-    if #argv > 1 then
-        path = table.concat( argv, '/' );
-    end
-    
-    for seg in string.gmatch( path, '[^/]+' ) do
-        if seg == '..' then
-            table.remove( res );
-        elseif seg ~= '.' then
-            table.insert( res, seg );
-        end
-    end
-    
-    return '/' .. table.concat( res, '/' );
-end
-
-local function dirname( path )
-    return string.match( path, '^(.+)/[^/]+$' );
-end
-
-local function basename( path, suffix )
-    path = string.match( path, '^.+/([^/]+)$' );
-    if suffix and suffix ~= path then
-        return string.gsub( path, string.gsub( suffix, '%.', '%%.' ) .. '$', '' );
-    end
-    
-    return path;
-end
-
-local function extname( path )
-    return string.match( path, '%.[^/.]*$' );
-end
-
-
 return {
     encodeURI = codec.encodeURI,
     decodeURI = codec.decodeURI,
@@ -72,10 +32,6 @@ return {
     decode2396 = codec.decode2396,
     encode3986 = codec.encode3986,
     decode3986 = codec.decode3986,
-    normalize = normalize,
-    dirname = dirname,
-    basename = basename,
-    extname = extname,
     parse = uriparser.parse,
     parseQuery = uriparser.parseQuery
 };
