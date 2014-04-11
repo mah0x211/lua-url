@@ -23,6 +23,7 @@ build = {
     type = "builtin",
     modules = {
         url = "url.lua",
+        ['url.codec'] = "codec.c",
         uriparser = {
             sources = { "uriparser_bind.c" },
             libraries = { "uriparser" },
