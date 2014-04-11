@@ -25,7 +25,7 @@ build = {
         url = "url.lua",
         ['url.codec'] = "codec.c",
         ['url.parser'] = {
-            sources = { "uriparser_bind.c" },
+            sources = { "parser.c" },
             libraries = { "uriparser" },
             incdirs = { 
                 "$(URIPARSER_INCDIR)"
