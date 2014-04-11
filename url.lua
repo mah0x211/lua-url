@@ -22,7 +22,7 @@
 
 --]]
 
-local uriparser = require('uriparser');
+local uriparser = require('url.parser');
 local codec = require('url.codec');
 
 

@@ -23,7 +23,6 @@
  *  codec.c
  *
  *  Created by Masatoshi Teruya on 14/04/11.
- *  Copyright 2012 Masatoshi Teruya. All rights reserved.
  *
  */
 

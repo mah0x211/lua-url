@@ -236,7 +236,7 @@ static int const_newindex( lua_State *L ){
     return luaL_error( L, "attempting to change protected module" );
 }
 
-LUALIB_API int luaopen_uriparser( lua_State *L )
+LUALIB_API int luaopen_url_parser( lua_State *L )
 {
     struct luaL_Reg funcs[] = {
         { "parse", parse_lua },
