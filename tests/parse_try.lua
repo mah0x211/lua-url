@@ -10,7 +10,8 @@ for k, v in pairs({
     query = 'query1=string1&query2=string2',
     userinfo = 'user:pass',
     fragment = 'hash',
-    scheme = 'http'
+    scheme = 'http',
+    path = '/p/a/t/h/'
 }) do
     ifNotEqual( v, res[k] );
 end
@@ -32,7 +33,8 @@ for k, v in pairs({
     absolutePath = false,
     userinfo = 'user:pass',
     fragment = 'hash',
-    scheme = 'http'
+    scheme = 'http',
+    path = '/p/a/t/h/'
 }) do
     ifNotEqual( v, res[k] );
 end
