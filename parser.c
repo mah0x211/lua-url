@@ -187,7 +187,8 @@ static int parse_lua( lua_State *L )
         }
         
         // set path
-        if( uri.pathHead )
+        if( uri.pathHead && 
+            uri.pathTail->text.afterLast - uri.pathHead->text.first )
         {
             const char *pathHead = uri.pathHead->text.first;
 
