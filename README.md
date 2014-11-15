@@ -12,13 +12,6 @@ url string utility.
 luarocks install --from=http://mah0x211.github.io/rocks/ url
 ```
 
-or 
-
-```sh
-git clone https://github.com/mah0x211/lua-url.git
-cd lua-url
-luarocks make
-```
 
 ## String Codecs
 
