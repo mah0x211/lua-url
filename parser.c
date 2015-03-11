@@ -125,8 +125,8 @@ static int parse_lua( lua_State *L )
     rc = uriParseUriA( &state, url );
     if( rc == URI_SUCCESS )
     {
+        const char *pathHead = url;
         const char *pathTail = url + len;
-        
         // create table
         lua_newtable( L );
         
@@ -143,12 +143,15 @@ static int parse_lua( lua_State *L )
                              uri.userInfo.afterLast - uri.userInfo.first );
         }
         // set hostText
-        if( uri.hostText.first ){
+        if( (uintptr_t)uri.hostText.first >= (uintptr_t)url &&
+            (uintptr_t)uri.hostText.first <= (uintptr_t)pathTail ){
+            pathHead = uri.hostText.afterLast;
             lstate_strn2tbl( L, "host", uri.hostText.first, 
                              uri.hostText.afterLast - uri.hostText.first );
         }
         // set portText
         if( uri.portText.first ){
+            pathHead = uri.portText.afterLast;
             lstate_strn2tbl( L, "port", uri.portText.first, 
                              uri.portText.afterLast - uri.portText.first );
         }
@@ -187,14 +190,7 @@ static int parse_lua( lua_State *L )
         }
         
         // set path
-        if( uri.pathHead && 
-            uri.pathTail->text.afterLast - uri.pathHead->text.first )
-        {
-            const char *pathHead = uri.pathHead->text.first;
-
-            if( pathHead != url ){
-                pathHead--;
-            }
+        if( (uintptr_t)pathHead < (uintptr_t)pathTail ){
             lstate_strn2tbl( L, "path", pathHead, pathTail - pathHead );
         }
         else {
