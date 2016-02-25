@@ -11,29 +11,14 @@ description = {
     maintainer = "Masatoshi Teruya"
 }
 dependencies = {
-    "lua >= 5.1"
-}
-external_dependencies = {
-    URIPARSER = {
-        header = "uriparser/Uri.h",
-        library = "uriparser"
-    }
+    "lua >= 5.1",
+    "uriparser >= 0.8.4"
 }
 build = {
     type = "builtin",
     modules = {
         url = "url.lua",
-        ['url.codec'] = "codec.c",
-        ['url.parser'] = {
-            sources = { "parser.c" },
-            libraries = { "uriparser" },
-            incdirs = { 
-                "$(URIPARSER_INCDIR)"
-            },
-            libdirs = { 
-                "$(URIPARSER_LIBDIR)"
-            }
-        }
+        ['url.codec'] = "codec.c"
     }
 }
 
