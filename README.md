@@ -1,9 +1,11 @@
-#lua-url
+lua-url
+====
+
 url string utility.
 
 ## Dependencies
 
-- liburiparser - http://uriparser.sourceforge.net/
+- uriparser: <https://github.com/mah0x211/lua-uriparser>
 
 
 ## Installation
@@ -19,53 +21,53 @@ luarocks install --from=http://mah0x211.github.io/rocks/ url
 
 returns the encoded string.
 
-- encodeURI( str ): based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURI) for more details.
-- encode2396( str ): based on RFC 2396.
-- encode3986( str ): based on RFC 3986.
+- str, err = encodeURI( uri ): based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURI) for more details.
+- str, err = encode2396( uri ): based on RFC 2396.
+- str, err = encode3986( uri ): based on RFC 3986.
 
 **Parameters**
 
-- str: string.
+- `uri:string`: uri string.
 
 **Returns**
 
-1. str: encoded string.
-2. err: error number.
+1. `str:string`: encoded string.
+2. `err:number`: error number.
 
 
 ### Decoding
 
 returns the decoded string.
 
-- decodeURI( str ): based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/decodeURI) for more details.
-- decode2396( str ): based on RFC 2396.
-- decode3986( str ): based on RFC 3986.
+- str, err = decodeURI( uri ): based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/decodeURI) for more details.
+- str, err = decode2396( uri ): based on RFC 2396.
+- str, err = decode3986( uri ): based on RFC 3986.
 
 **Parameters**
 
-- str: string.
+- `uri:string`: encoded uri string.
 
 **Returns**
 
-1. str: decoded string on success, or nil on failure.
-2. err: error number.
+1. `str:string`: decoded string on success, or nil on failure.
+2. `err:number`: error number.
 
 
 ## Parser
 
-### parse( str [, parseQuery] )
+### res, err = parse( url [, parseQuery] )
 
 returns the table of parsed url.
 
 **Parameters**
 
-- str: url string.
-- parseQuery: parse query-string if true.
+- `url:string`: url string.
+- `parseQuery:boolean`: parse query-string if `true`.
 
 **Returns**
 
-1. res: url info table.
-2. err: error string.
+1. `res:table`: url info table.
+2. `err:string`: error string.
 
 **Example**
 
@@ -81,25 +83,24 @@ following items is included in the result table;
     scheme = "http"
     userinfo = "user:pass"
     query = "query=string"
-    absolutePath = "false"
     fragment = "hash"
     port = "8080"
 }
 --]]
 ```
 
-### parseQuery( str )
+### res, err = parseQuery( qry )
 
 returns the table of parsed query-string.
 
 **Parameters**
 
-- str: query string.
+- `qry:string`: query string.
 
 **Returns**
 
-1. res: query info table.
-2. err: error string.
+1. `res:table`: query info table.
+2. `err:string`: error string.
 
 **Example**
 
