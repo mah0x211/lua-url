@@ -1,11 +1,11 @@
 /*
  *  Copyright (C) 2014 Masatoshi Teruya
  *
- *  Permission is hereby granted, free of charge, to any person obtaining a 
- *  copy of this software and associated documentation files (the "Software"), 
- *  to deal in the Software without restriction, including without limitation 
- *  the rights to use, copy, modify, merge, publish, distribute, sublicense, 
- *  and/or sell copies of the Software, and to permit persons to whom the 
+ *  Permission is hereby granted, free of charge, to any person obtaining a
+ *  copy of this software and associated documentation files (the "Software"),
+ *  to deal in the Software without restriction, including without limitation
+ *  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ *  and/or sell copies of the Software, and to permit persons to whom the
  *  Software is furnished to do so, subject to the following conditions:
  *
  *  The above copyright notice and this permission notice shall be included in
@@ -13,14 +13,14 @@
  *
  *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL 
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
  *  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
- *  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  *  DEALINGS IN THE SOFTWARE.
  *
  *
- *  codec.c
+ *  src/codec.c
  *
  *  Created by Masatoshi Teruya on 14/04/11.
  *
@@ -38,22 +38,22 @@
 
 /*
     encodeURI   : 0-9 a-zA-Z !#$&'()*+,-./:;=?@_~
-    
+
     uric        = reserved | unreserved | escaped
     reserved    = ";" | "," | "/" | "?" | ":" | "@" | "&" | "=" | "+" | "$"
     unreserved  = alphanum | mark
     mark        = "-" | "_" | "." | "!" | "~" | "*" | "'" | "(" | ")"
 
     escaped     = "%" hex hex
-    
+
     hex         = digit | "A" | "B" | "C" | "D" | "E" | "F" |
                             "a" | "b" | "c" | "d" | "e" | "f"
-    
+
     digit       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
     alphanum    = alpha | digit
     alpha       = lowalpha | upalpha
-    
+
     lowalpha    = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" |
                   "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" |
                   "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
@@ -63,17 +63,17 @@
 */
 static const unsigned char UNRESERVED_URI[256] = {
 //  ctrl-code: 0-32
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0,
 //  SP      "            %
-    0, '!', 0, '#', '$', 0, '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', 
+    0, '!', 0, '#', '$', 0, '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
 //                                                              <       >
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', 0, '=', 0, '?', 
-    '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', 0, '=', 0, '?',
+    '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
 //                                                              [  \  ]  ^
-    'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 0, 0, 0, 0, '_', 
+    'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 0, 0, 0, 0, '_',
 //  `
-    0, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 
+    0, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
 //                                                              {  |  }
     'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 0, 0, 0, '~'
 };
@@ -81,49 +81,49 @@ static const unsigned char UNRESERVED_URI[256] = {
 
 /*
     RFC 2396    : 0-9 a-zA-Z !'()*-._~
-    
+
     unreserved  = alphanum | mark
-    
+
     mark        = "-" | "_" | "." | "!" | "~" | "*" | "'" | "(" | ")"
 
     alphanum    = alpha | digit
-    
+
     alpha       = lowalpha | upalpha
-    
+
     lowalpha    = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" |
                   "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" |
                   "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
-    
+
     upalpha     = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" |
                   "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" |
                   "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
-    
+
     digit       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 */
 static const unsigned char UNRESERVED_2396[256] = {
 //  ctrl-code: 0-32
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0,
 
 //  SP      "  #  $  %  &                       +  ,            /
-    0, '!', 0, 0, 0, 0, 0, '\'', '(', ')', '*', 0, 0, '-', '.', 0, 
+    0, '!', 0, 0, 0, 0, 0, '\'', '(', ')', '*', 0, 0, '-', '.', 0,
 
 //  digit
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 
 //  :  ;  <  =  >  ?  @
-    0, 0, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0,
 
 //  alpha-upper
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 
-    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 
 //  [  \  ]  ^       `
-    0, 0, 0, 0, '_', 0, 
+    0, 0, 0, 0, '_', 0,
 
 //  alpha-lower
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 
-    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 
 //  {  |  }
     0, 0, 0, '~'
@@ -133,11 +133,11 @@ static const unsigned char UNRESERVED_2396[256] = {
 
 /*
     RFC 3986    : 0-9 a-zA-Z -._~
-    
+
     unreserved  = alpha | digit | "-" | "." | "_" | "~"
-    
+
     alpha       = lowalpha | upalpha
-    
+
     lowalpha    = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" |
                   "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" |
                   "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
@@ -145,33 +145,33 @@ static const unsigned char UNRESERVED_2396[256] = {
     upalpha     = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" |
                   "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" |
                   "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
-    
+
     digit       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 */
 static const unsigned char UNRESERVED_3986[256] = {
 //  ctrl-code: 0-32
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0,
 
 //  SP !  "  #  $  %  &  '  (  )  *  +  ,            /
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '-', '.', 0, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '-', '.', 0,
 
 //  digit
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 
 //  :  ;  <  =  >  ?  @
-    0, 0, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0,
 
 //  alpha-upper
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 
-    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 
 //  [  \  ]  ^       `
-    0, 0, 0, 0, '_', 0, 
+    0, 0, 0, 0, '_', 0,
 
 //  alpha-lower
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 
-    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 
 //  {  |  }
     0, 0, 0, '~'
@@ -180,7 +180,7 @@ static const unsigned char UNRESERVED_3986[256] = {
 
 /*
     URIC(RFC 3986)
-    
+
     alpha         = lowalpha | upalpha
     lowalpha      = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" |
                     "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" |
@@ -207,12 +207,12 @@ static const unsigned char UNRESERVED_3986[256] = {
     pchar         = unreserved | pct-encoded | sub-delim | ":" | "@"
     --------------------------------------------------------------------------
 
-    URI           = scheme "://" 
+    URI           = scheme "://"
                     [ userinfo[ ":" userinfo ] "@" ]
                     host
                     [ ":" port ]
-                    path 
-                    [ "?" query ] 
+                    path
+                    [ "?" query ]
                     [ "#" fragment ]
     --------------------------------------------------------------------------
     scheme        = alpha *( alpha / digit / "+" / "-" / "." )
@@ -230,32 +230,32 @@ static const unsigned char UNRESERVED_3986[256] = {
     --------------------------------------------------------------------------
     fragment      = query
     --------------------------------------------------------------------------
-    
+
 */
 static const unsigned char URIC[256] = {
 //  ctrl-code: 0-32
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0,
 
 //  SP      "  #
-    0, '!', 0, 0, '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', 
+    0, '!', 0, 0, '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
 
 //  digit
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 
-//            <       > 
-    ':', ';', 0, '=', 0, '?', '@', 
+//            <       >
+    ':', ';', 0, '=', 0, '?', '@',
 
 //  alpha-upper
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 
-    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 
 //       \       ^       `
-    '[', 0, ']', 0, '_', 0, 
+    '[', 0, ']', 0, '_', 0,
 
 //  alpha-lower
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 
 //  {  |  }
     0, 0, 0, '~'
@@ -277,14 +277,14 @@ static const unsigned char URIC[256] = {
 static const unsigned char DEC2HEX[16] = "0123456789ABCDEF";
 
 static const char HEX2DEC[256] = {
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 //  0  1  2  3  4  5  6  7  8  9
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, -1, -1, -1, -1, -1, -1, 
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, -1, -1, -1, -1, -1, -1,
 //  A   B   C   D   E   F
-    10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
+    10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 //  a   b   c   d   e   f
     10, 11, 12, 13, 14, 15
 };
@@ -294,17 +294,17 @@ static const char HEX2DEC[256] = {
 #define CODEC_UTF8ENC_LEN  12
 #define CODEC_UTF8DEC_LEN  4
 
-static unsigned char *encode( char *str, size_t slen, const unsigned char *tbl, 
+static unsigned char *encode( char *str, size_t slen, const unsigned char *tbl,
                               size_t *len )
 {
     unsigned char *dest = malloc( 3 * slen + 1 );
-    
+
     if( dest )
     {
         unsigned char *src = (unsigned char*)str;
         ssize_t bytes = 0;
         size_t i = 0;
-        
+
         for(; i < slen; i++ )
         {
             if( tbl[*src] ){
@@ -320,10 +320,10 @@ static unsigned char *encode( char *str, size_t slen, const unsigned char *tbl,
             }
             src++;
         }
-        
+
         *len = bytes;
     }
-    
+
     return dest;
 }
 
@@ -332,16 +332,16 @@ static int encode_lua( lua_State *L, const unsigned char *tbl )
     size_t len = 0;
     const char *src = luaL_checklstring( L, 1, &len );
     char *dest = (char*)encode( (char*)src, len, tbl, &len );
-    
+
     if( dest ){
         lua_pushlstring( L, dest, len );
         return 1;
     }
-    
+
     // got error
     lua_pushnil( L );
     lua_pushinteger( L, errno );
-    
+
     return 2;
 }
 
@@ -447,7 +447,7 @@ static int unicode_pt2utf8( unsigned char *dest, size_t *len, uint32_t cp )
         errno = ERANGE;
         return -1;
     }
-    
+
     return 0;
 }
 
@@ -456,18 +456,18 @@ static int unicode_pt2utf8( unsigned char *dest, size_t *len, uint32_t cp )
     unicode code-point: u+0000 ... u+10ffff = 21bit
                  ascii: u+0000 ... u+007f   = 0-127 = 7bit
 */
-static unsigned char *decode( char *str, size_t slen, const unsigned char *tbl, 
+static unsigned char *decode( char *str, size_t slen, const unsigned char *tbl,
                               size_t *len )
 {
     unsigned char *dest = malloc( slen + 1 );
-    
+
     if( dest )
     {
         unsigned char *src = (unsigned char*)str;
         uint32_t hl,hi,lo;
         size_t bytes = 0;
         size_t i = 0;
-        
+
         for(; i < slen; i++ )
         {
             if( *src != '%' ){
@@ -488,7 +488,7 @@ static unsigned char *decode( char *str, size_t slen, const unsigned char *tbl,
                     0x40[0100 0000] | 0x01[0000 0001]
                     0x41[0100 0001]
                     0x41 = 65 = 'A'
-                    
+
                     hex:'%7a'
                     '7' to hex:0x07[0000 0111]
                     'a' to hex:0x0a[0000 1010]
@@ -496,7 +496,7 @@ static unsigned char *decode( char *str, size_t slen, const unsigned char *tbl,
                     0x70[0111 0000] | 0x0a[0000 1010]
                     0x7a[0111 1010]
                     0x7a:122 = 'z'
-                    
+
                     hex:'%7a4'
                     '7' to hex:0x07[0000 0111]
                     'a' to hex:0x0a[0000 1010]
@@ -528,7 +528,7 @@ static unsigned char *decode( char *str, size_t slen, const unsigned char *tbl,
                 src += 3;
             }
             // %u[hex]*4
-            else if( src[1] == 'u' && 
+            else if( src[1] == 'u' &&
                      HEX2DEC[src[2]] > -1 && HEX2DEC[src[3]] > -1 &&
                      HEX2DEC[src[4]] > -1 && HEX2DEC[src[5]] > -1 )
             {
@@ -545,17 +545,17 @@ static unsigned char *decode( char *str, size_t slen, const unsigned char *tbl,
                 goto INVALID_ENCODING;
             }
         }
-        
+
         *len = bytes;
-        
+
         return dest;
-        
+
 INVALID_ENCODING:
         errno = EINVAL;
         free( dest );
         dest = NULL;
     }
-    
+
     return dest;
 }
 
@@ -565,17 +565,17 @@ static int decode_lua( lua_State *L, const unsigned char *tbl )
     size_t len = 0;
     const char *src = luaL_checklstring( L, 1, &len );
     char *dest = (char*)decode( (char*)src, len, tbl, &len );
-    
+
     if( dest ){
         lua_pushlstring( L, dest, len );
         free( dest );
         return 1;
     }
-    
+
     // got error
     lua_pushnil( L );
     lua_pushinteger( L, errno );
-    
+
     return 2;
 }
 
@@ -602,7 +602,7 @@ LUALIB_API int luaopen_url_codec( lua_State *L )
         { NULL, NULL }
     };
     int i;
-    
+
     // method
     lua_newtable( L );
     i = 0;
@@ -612,7 +612,7 @@ LUALIB_API int luaopen_url_codec( lua_State *L )
         lua_rawset( L, -3 );
         i++;
     }
-    
+
     return 1;
 }
 

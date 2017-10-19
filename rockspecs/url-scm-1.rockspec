@@ -18,7 +18,7 @@ build = {
     type = "builtin",
     modules = {
         url = "url.lua",
-        ['url.codec'] = "codec.c"
+        ["url.codec"] = "src/codec.c"
     }
 }
 
