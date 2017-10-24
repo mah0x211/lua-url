@@ -298,8 +298,8 @@ static inline int parse_querystring( lua_State *L, unsigned char *url,
         {
             // fragment
             case '#':
-                lauxh_pushlstr2tblat( L, "query", (const char*)url + head,
-                                      pos - head, 1 );
+                lauxh_pushlstr2tbl( L, "query", (const char*)url + head,
+                                    pos - head );
                 // paththrough
 
             // illegal byte sequence
@@ -371,13 +371,13 @@ static inline int parse_queryparams( lua_State *L, unsigned char *url,
             // fragment
             case '#':
                 lauxh_pushlstr2tblat( L, "query", (const char*)url + *cur,
-                                      pos - *cur, 1 );
+                                      pos - *cur, 2 );
                 push_param();
                 // paththrough
 
             // illegal byte sequence
             case 0:
-                lua_rawset( L, 1 );
+                lua_rawset( L, -3 );
                 *cur = pos;
                 return url[pos];
 
@@ -399,7 +399,7 @@ static inline int parse_queryparams( lua_State *L, unsigned char *url,
             case '%':
                 // invalid percent-encoded format
                 if( !is_percentencoded( url + pos + 1 ) ){
-                    lua_rawset( L, 1 );
+                    lua_rawset( L, -3 );
                     *cur = pos;
                     return '%';
                 }
@@ -409,10 +409,9 @@ static inline int parse_queryparams( lua_State *L, unsigned char *url,
         }
     }
 
-    lauxh_pushlstr2tblat( L, "query", (const char*)url + *cur,
-                          pos - *cur, 1 );
     push_param();
-    lua_rawset( L, 1 );
+    lua_rawset( L, -3 );
+    lauxh_pushlstr2tbl( L, "query", (const char*)url + *cur, pos - *cur );
     *cur = pos;
 
     return 0;
@@ -438,8 +437,8 @@ static inline int parse_fragment( lua_State *L, unsigned char *url, size_t urlle
             // illegal byte sequence
             case 0:
             case '#':
-                lauxh_pushlstr2tblat( L, "fragment", (const char*)url + head,
-                                      pos - head, 1 );
+                lauxh_pushlstr2tbl( L, "fragment", (const char*)url + head,
+                                    pos - head );
                 *cur = pos;
                 return url[pos];
 
@@ -455,7 +454,7 @@ static inline int parse_fragment( lua_State *L, unsigned char *url, size_t urlle
         }
     }
 
-    lauxh_pushlstr2tblat( L, "fragment", (const char*)url + head, pos - head, 1);
+    lauxh_pushlstr2tbl( L, "fragment", (const char*)url + head, pos - head );
     *cur = pos;
 
     return 0;
@@ -495,7 +494,7 @@ static inline int parse_fragment( lua_State *L, unsigned char *url, size_t urlle
 static int parse_lua( lua_State *L )
 {
     size_t urllen = 0;
-    const char *src = luaL_checklstring( L, 2, &urllen );
+    const char *src = luaL_checklstring( L, 1, &urllen );
     unsigned char *url = (unsigned char*)src;
     unsigned char c = 0;
     size_t head = 0;
@@ -508,18 +507,19 @@ static int parse_lua( lua_State *L )
     query_parser_t parseqry = parse_querystring;
 
     // check arguments
-    luaL_checktype( L, 1, LUA_TTABLE );
-    if( lua_gettop( L ) > 2 )
+    if( lua_gettop( L ) > 1 )
     {
-        luaL_checktype( L, 3, LUA_TBOOLEAN );
-        if( lua_toboolean( L, 3 ) ){
+        // parse query-parameter option
+        if( lauxh_checkboolean( L, 2 ) ){
             parseqry = parse_queryparams;
         }
+        lua_settop( L, 1 );
     }
 
+    lua_newtable( L );
     if( !urllen ){
         lua_pushinteger( L, 0 );
-        return 1;
+        return 2;
     }
 
     // check first byte
@@ -527,7 +527,7 @@ static int parse_lua( lua_State *L )
         // illegal byte sequence
         case 0:
             lua_pushinteger( L, cur );
-            return 1;
+            return 2;
 
         // query-string
         case '?':
@@ -549,19 +549,19 @@ PARSE_PATHNAME:
         {
             // illegal byte sequence
             case 0:
-                lauxh_pushlstr2tblat( L, "path", src + head, cur - head, 1 );
+                lauxh_pushlstr2tbl( L, "path", src + head, cur - head );
                 lua_pushinteger( L, cur );
                 lua_pushlstring( L, src + cur, 1 );
-                return 2;
+                return 3;
 
             // query-string
             case '?':
-                lauxh_pushlstr2tblat( L, "path", src + head, cur - head, 1 );
+                lauxh_pushlstr2tbl( L, "path", src + head, cur - head );
                 goto PARSE_QUERY;
 
             // fragment
             case '#':
-                lauxh_pushlstr2tblat( L, "path", src + head, cur - head, 1 );
+                lauxh_pushlstr2tbl( L, "path", src + head, cur - head );
                 cur++;
                 goto PARSE_FRAGMENT;
 
@@ -571,7 +571,7 @@ PARSE_PATHNAME:
                 if( !is_percentencoded( url + cur + 1 ) ){
                     lua_pushinteger( L, cur );
                     lua_pushlstring( L, src + cur, 1 );
-                    return 2;
+                    return 3;
                 }
                 // skip "%<HEX>"
                 cur += 2;
@@ -603,9 +603,9 @@ PARSE_PATHNAME:
     }
 
     // set path
-    lauxh_pushlstr2tblat( L, "path", src + head, cur - head, 1 );
+    lauxh_pushlstr2tbl( L, "path", src + head, cur - head );
     lua_pushinteger( L, cur );
-    return 1;
+    return 2;
 
 
 PARSE_QUERY:
@@ -613,7 +613,7 @@ PARSE_QUERY:
         // done
         case 0:
             lua_pushinteger( L, cur );
-            return 1;
+            return 2;
 
         // fragment
         case '#':
@@ -624,7 +624,7 @@ PARSE_QUERY:
         default:
             lua_pushinteger( L, cur );
             lua_pushlstring( L, src + cur, 1 );
-            return 2;
+            return 3;
     }
 
 
@@ -636,19 +636,19 @@ PARSE_FRAGMENT:
         // done
         case 0:
             lua_pushinteger( L, cur );
-            return 1;
+            return 2;
 
         // illegal byte sequence
         default:
             lua_pushinteger( L, cur );
             lua_pushlstring( L, src + cur, 1 );
-            return 2;
+            return 3;
     }
 
 
 PARSE_SCHEME:
     // set "scheme" to scheme field
-    lauxh_pushlstr2tblat( L, "scheme", src + head, cur - head, 1 );
+    lauxh_pushlstr2tbl( L, "scheme", src + head, cur - head );
     // skip ":"
     cur++;
     // must be double-slash
@@ -656,7 +656,7 @@ PARSE_SCHEME:
     if( ( cur + 1 ) >= urllen || url[cur++] != '/' || url[cur++] != '/' ){
         lua_pushinteger( L, cur - 1 );
         lua_pushlstring( L, src + cur - 1, 1 );
-        return 2;
+        return 3;
     }
 
 
@@ -674,21 +674,21 @@ PARSE_HOST:
         case '.':
             lua_pushinteger( L, cur - 1 );
             lua_pushlstring( L, src + cur - 1, 1 );
-            return 2;
+            return 3;
 
         default:
             // illegal byte sequence
             if( url[cur] != '%' && !isalnum( url[cur] ) ){
                 lua_pushinteger( L, cur - 1 );
                 lua_pushlstring( L, src + cur - 1, 1 );
-                return 2;
+                return 3;
             }
     }
 
 
-#define push_host() do {                                                \
-    lauxh_pushlstr2tblat( L, "host", src + head, cur - head, 1 );       \
-    lauxh_pushlstr2tblat( L, "hostname", src + head, cur - head, 1 );   \
+#define push_host() do {                                            \
+    lauxh_pushlstr2tbl( L, "host", src + head, cur - head );        \
+    lauxh_pushlstr2tbl( L, "hostname", src + head, cur - head );    \
 }while(0)
 
 
@@ -701,7 +701,7 @@ PARSE_HOST:
                 push_host();
                 lua_pushinteger( L, cur );
                 lua_pushlstring( L, src + cur, 1 );
-                return 2;
+                return 3;
 
             case '.':
                 continue;
@@ -712,7 +712,7 @@ PARSE_HOST:
                 if( userinfo ){
                     lua_pushinteger( L, cur );
                     lua_pushlstring( L, src + cur, 1 );
-                    return 2;
+                    return 3;
                 }
                 lauxh_pushlstr2tbl( L, "userinfo", src + head, cur - head );
                 lauxh_pushlstr2tbl( L, "user", src + head, cur - head );
@@ -744,7 +744,7 @@ PARSE_HOST:
                 if( !is_percentencoded( url + cur + 1 ) ){
                     lua_pushinteger( L, cur );
                     lua_pushlstring( L, src + cur, 1 );
-                    return 2;
+                    return 3;
                 }
                 // skip "%<HEX>"
                 cur += 2;
@@ -753,7 +753,7 @@ PARSE_HOST:
 
     push_host();
     lua_pushinteger( L, cur );
-    return 1;
+    return 2;
 
 
 
@@ -786,7 +786,7 @@ PARSE_IPV6:
                     push_host();
                     lua_pushinteger( L, cur );
                     lua_pushlstring( L, src + cur, 1 );
-                    return 2;
+                    return 3;
             }
             break;
 
@@ -794,7 +794,7 @@ PARSE_IPV6:
         default:
             lua_pushinteger( L, cur );
             lua_pushlstring( L, src + cur, 1 );
-            return 2;
+            return 3;
     }
 
 #undef push_host
@@ -806,10 +806,10 @@ PARSE_PORT:
     phead = cur;
     portnum = 0;
 
-#define push_hostport() do {                                            \
-    lauxh_pushlstr2tblat( L, "host", src + head, cur - head, 1 );       \
-    lauxh_pushlstr2tblat( L, "hostname", src + head, tail - head, 1 );  \
-    lauxh_pushlstr2tblat( L, "port", src + phead, cur - phead, 1 );     \
+#define push_hostport() do {                                        \
+    lauxh_pushlstr2tbl( L, "host", src + head, cur - head );        \
+    lauxh_pushlstr2tbl( L, "hostname", src + head, tail - head );   \
+    lauxh_pushlstr2tbl( L, "port", src + phead, cur - phead );      \
 }while(0)
 
 
@@ -826,7 +826,7 @@ PARSE_PORT:
                 if( portnum > 0xFFFF ){
                     lua_pushinteger( L, cur );
                     lua_pushlstring( L, src + cur, 1 );
-                    return 2;
+                    return 3;
                 }
                 continue;
 
@@ -850,7 +850,7 @@ PARSE_PORT:
                 if( userinfo ){
                     lua_pushinteger( L, cur );
                     lua_pushlstring( L, src + cur, 1 );
-                    return 2;
+                    return 3;
                 }
                 // this byte sequences to use as username
                 goto PARSE_PASSWORD;
@@ -859,7 +859,7 @@ PARSE_PORT:
 
     push_hostport();
     lua_pushinteger( L, cur );
-    return 1;
+    return 2;
 
 #undef push_hostport
 
@@ -878,12 +878,12 @@ PARSE_PASSWORD:
             case '#':
                 lua_pushinteger( L, cur );
                 lua_pushlstring( L, src + cur, 1 );
-                return 2;
+                return 3;
 
             case '@':
-                lauxh_pushlstr2tblat( L, "userinfo", src + head, cur - head, 1 );
-                lauxh_pushlstr2tblat( L, "user", src + head, tail - head, 1 );
-                lauxh_pushlstr2tblat( L, "password", src + phead, cur - phead, 1 );
+                lauxh_pushlstr2tbl( L, "userinfo", src + head, cur - head );
+                lauxh_pushlstr2tbl( L, "user", src + head, tail - head );
+                lauxh_pushlstr2tbl( L, "password", src + phead, cur - phead );
                 userinfo = c;
                 cur++;
                 goto PARSE_HOST;
@@ -894,7 +894,7 @@ PARSE_PASSWORD:
                 if( !is_percentencoded( url + cur + 1 ) ){
                     lua_pushinteger( L, cur );
                     lua_pushlstring( L, src + cur, 1 );
-                    return 2;
+                    return 3;
                 }
                 // skip "%<HEX>"
                 cur += 2;
@@ -905,7 +905,7 @@ PARSE_PASSWORD:
     // invalid userinfo format
     lua_pushinteger( L, cur );
     lua_pushlstring( L, src + cur, 1 );
-    return 2;
+    return 3;
 }
 
 
