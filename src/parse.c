@@ -196,7 +196,7 @@ static inline int parse_ipv6( unsigned char *url, size_t urllen, size_t *cur )
     size_t pos = *cur;
     size_t head = 0;
     int zerogrp = 0;
-    int ngrp = 0;
+    int nbit = 0;
 
     if( url[pos] == ':' )
     {
@@ -206,7 +206,7 @@ static inline int parse_ipv6( unsigned char *url, size_t urllen, size_t *cur )
             return url[pos + 1];
         }
         pos += 2;
-        ngrp++;
+        nbit += 16;
     }
 
     for(; pos < urllen; pos++ )
@@ -226,7 +226,7 @@ static inline int parse_ipv6( unsigned char *url, size_t urllen, size_t *cur )
                     *cur = pos;
                     return url[pos];
                 }
-                ngrp++;
+                nbit += 16;
                 zerogrp = 1;
                 continue;
 
@@ -234,9 +234,9 @@ static inline int parse_ipv6( unsigned char *url, size_t urllen, size_t *cur )
             case '0' ... '9':
             case 'A' ... 'F':
             case 'a' ... 'f':
-                if( ngrp < 8 )
+                if( nbit < 128 )
                 {
-                    ngrp++;
+                    nbit += 16;
                     head = pos;
                     if( HEXDIGIT[url[++pos]] && HEXDIGIT[url[++pos]] &&
                         HEXDIGIT[url[++pos]] ){
@@ -252,7 +252,7 @@ static inline int parse_ipv6( unsigned char *url, size_t urllen, size_t *cur )
 
                         // found finish
                         case ']':
-                            if( ngrp == 8 ){
+                            if( nbit == 128 ){
                                 *cur = pos;
                                 return ']';
                             }
@@ -260,7 +260,12 @@ static inline int parse_ipv6( unsigned char *url, size_t urllen, size_t *cur )
 
                         // embed ipv4
                         case '.':
-                            if( ngrp < 7 ){
+                            // if nbit is less than or equal to 112, can be
+                            // embedded ipv4 address (32 bit).
+                            //
+                            //  max nbit = 128 bit(IPv6) - 32 bit(IPv4)
+                            //           = 96
+                            if( nbit <= 112 ){
                                 *cur = head;
                                 return parse_ipv4( url, urllen, cur );
                             }
