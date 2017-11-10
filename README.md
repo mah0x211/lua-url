@@ -3,10 +3,6 @@ lua-url
 
 url string utility.
 
-## Dependencies
-
-- uriparser: <https://github.com/mah0x211/lua-uriparser>
-
 
 ## Installation
 
@@ -55,7 +51,7 @@ returns the decoded string.
 
 ## Parser
 
-### res, err = parse( url [, parseQuery] )
+### res, cur, err = parse( url [, parseQuery [, init]] )
 
 returns the table of parsed url.
 
@@ -63,56 +59,56 @@ returns the table of parsed url.
 
 - `url:string`: url string.
 - `parseQuery:boolean`: parse query-string if `true`.
+- `cur:number`: where to cursor start position. (default `0`)
 
 **Returns**
 
 1. `res:table`: url info table.
-2. `err:string`: error string.
+2. `cur:number`: cursor stop position.
+3. `err:string`: error character.
+
 
 **Example**
 
 ```lua
 local url = require('url');
-local uri = url.parse('http://user:pass@host.com:8080/p/a/t/h/?query=string#hash');
+
+local res, cur, err = url.parse('head http://user:pass@host.com:8080/p/a/t/h/?query=string#hash tail', true, 5);
 
 --[[
-following items is included in the result table;
-{
-    host = "host.com"
-    path = "/p/a/t/h/"
-    scheme = "http"
-    userinfo = "user:pass"
-    query = "query=string"
+res = {
+    scheme = "http",
+    userinfo = "user:pass",
+    user = "user",
+    password = "pass",
+    host = "host.com:8080",
+    hostname = "host.com",
+    port = "8080",
+    path = "/p/a/t/h/",
+    query = "?query=string",
+    queryParams = {
+        query = "string"
+    },
     fragment = "hash"
-    port = "8080"
 }
+cur = 62
+err = " "
 --]]
-```
 
-### res, err = parseQuery( qry )
 
-returns the table of parsed query-string.
-
-**Parameters**
-
-- `qry:string`: query string.
-
-**Returns**
-
-1. `res:table`: query info table.
-2. `err:string`: error string.
-
-**Example**
-
-```lua
-local url = require('url');
-local qry = url.parseQuery('query1=string1&query2=string2');
+-- parse query
+res, cur, err = url.parse('head ?query=string#hash tail', false, 5);
 
 --[[
-following items is included in the result table;
-{
-    query1 = "string1",
-    query2 = ""string2"
+res = {
+    fragment = "hash",
+    query = "?query=string",
+    queryParams = {
+        query = "string"
+    }
 }
+cur = 23,
+err = " "
 --]]
+
 ```
