@@ -160,6 +160,7 @@ static inline int parse_ipv4( unsigned char *url, size_t urllen, size_t *cur )
 
 
             default:
+                // done
                 if( nseg == 3 && dec != -1 ){
                     *cur = pos;
                     return url[pos];
@@ -186,10 +187,7 @@ static inline int parse_ipv4( unsigned char *url, size_t urllen, size_t *cur )
  *              / [ *6( h16 ":" ) h16 ] "::"
  *
  * ls32         = ( h16 ":" h16 ) / IPv4address
- *              ; アドレスの下位 32 ビット
- *
  * h16         = 1*4HEXDIG
- * ; 16 進数字で表現される 16 ビットのアドレス
  */
 static inline int parse_ipv6( unsigned char *url, size_t urllen, size_t *cur )
 {
@@ -493,6 +491,7 @@ static inline int parse_fragment( lua_State *L, unsigned char *url, size_t urlle
 */
 static int parse_lua( lua_State *L )
 {
+    int argc = lua_gettop( L );
     size_t urllen = 0;
     const char *src = luaL_checklstring( L, 1, &urllen );
     unsigned char *url = (unsigned char*)src;
@@ -507,12 +506,18 @@ static int parse_lua( lua_State *L )
     query_parser_t parseqry = parse_querystring;
 
     // check arguments
-    if( lua_gettop( L ) > 1 )
+    if( argc > 1 )
     {
-        // parse query-parameter option
+        // parse query-params option
         if( lauxh_checkboolean( L, 2 ) ){
             parseqry = parse_queryparams;
         }
+
+        // initial cursor option
+        if( argc > 2 ){
+            cur = lauxh_checkuint64( L, 3 );
+        }
+
         lua_settop( L, 1 );
     }
 
@@ -523,7 +528,7 @@ static int parse_lua( lua_State *L )
     }
 
     // check first byte
-    switch( *url ){
+    switch( url[cur] ){
         // illegal byte sequence
         case 0:
             lua_pushinteger( L, cur );
@@ -686,9 +691,9 @@ PARSE_HOST:
     }
 
 
-#define push_host() do {                                            \
-    lauxh_pushlstr2tbl( L, "host", src + head, cur - head );        \
-    lauxh_pushlstr2tbl( L, "hostname", src + head, cur - head );    \
+#define push_host() do {                                        \
+    lauxh_pushlstr2tbl( L, "host", src + head, cur - head );    \
+    lauxh_pushlstr2tbl( L, "hostname", src + head, cur - head );\
 }while(0)
 
 
