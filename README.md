@@ -103,12 +103,8 @@ res, cur, err = url.parse('head ?query=string#hash tail', false, 5);
 res = {
     fragment = "hash",
     query = "?query=string",
-    queryParams = {
-        query = "string"
-    }
 }
 cur = 23,
 err = " "
 --]]
-
 ```
