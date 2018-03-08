@@ -345,6 +345,7 @@ static inline int parse_queryparams( lua_State *L, unsigned char *url,
     size_t phead = 0;
     size_t len = 0;
     int idx = 0;
+    int nparam = 0;
 
     lua_pushstring( L, "queryParams" );
     lua_newtable( L );
@@ -365,6 +366,7 @@ static inline int parse_queryparams( lua_State *L, unsigned char *url,
                 lua_pushlstring( L, (const char*)url + head, len );     \
         }                                                               \
         lua_rawset( L, -3 );                                            \
+        nparam++;                                                       \
     }                                                                   \
 }while(0)
 
@@ -375,14 +377,23 @@ static inline int parse_queryparams( lua_State *L, unsigned char *url,
         {
             // fragment
             case '#':
-                lauxh_pushlstr2tblat( L, "query", (const char*)url + *cur,
-                                      pos - *cur, 2 );
-                push_param();
+                // add query field
+                if( pos - *cur - 1 ){
+                    lauxh_pushlstr2tblat( L, "query", (const char*)url + *cur,
+                                          pos - *cur, 2 );
+                    push_param();
+                }
                 // paththrough
 
             // illegal byte sequence
             case 0:
-                lua_rawset( L, -3 );
+                // add queryParams field
+                if( nparam ){
+                    lua_rawset( L, -3 );
+                }
+                else {
+                    lua_pop( L, 2 );
+                }
                 *cur = pos;
                 return url[pos];
 
@@ -414,9 +425,15 @@ static inline int parse_queryparams( lua_State *L, unsigned char *url,
         }
     }
 
-    push_param();
-    lua_rawset( L, -3 );
-    lauxh_pushlstr2tbl( L, "query", (const char*)url + *cur, pos - *cur );
+    // add queryParams and query field
+    if( pos - *cur - 1 ){
+        push_param();
+        lua_rawset( L, -3 );
+        lauxh_pushlstr2tbl( L, "query", (const char*)url + *cur, pos - *cur );
+    }
+    else {
+        lua_pop( L, 2 );
+    }
     *cur = pos;
 
     return 0;
