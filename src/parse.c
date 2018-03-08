@@ -296,8 +296,11 @@ static inline int parse_querystring( lua_State *L, unsigned char *url,
         {
             // fragment
             case '#':
-                lauxh_pushlstr2tbl( L, "query", (const char*)url + head,
-                                    pos - head );
+                // add query field
+                if( pos - head - 1 ){
+                    lauxh_pushlstr2tbl( L, "query", (const char*)url + head,
+                                        pos - head );
+                }
                 // paththrough
 
             // illegal byte sequence
@@ -323,6 +326,10 @@ static inline int parse_querystring( lua_State *L, unsigned char *url,
         }
     }
 
+    // add query field
+    if( pos - head - 1 ){
+        lauxh_pushlstr2tbl( L, "query", (const char*)url + head, pos - head );
+    }
     *cur = pos;
 
     return 0;
