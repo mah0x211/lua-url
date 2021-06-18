@@ -1,7 +1,8 @@
+rockspec_format = "3.0"
 package = "url"
 version = "scm-1"
 source = {
-    url = "gitrec://github.com/mah0x211/lua-url.git"
+    url = "git+https://github.com/mah0x211/lua-url.git"
 }
 description = {
     summary = "url functions",
@@ -11,7 +12,6 @@ description = {
 }
 dependencies = {
     "lua >= 5.1",
-    "luarocks-fetch-gitrec >= 0.2",
 }
 build = {
     type = "builtin",
@@ -21,4 +21,3 @@ build = {
         ["url.parse"] = "src/parse.c"
     }
 }
-
