@@ -32,7 +32,7 @@
 #include <string.h>
 #include <unistd.h>
 // lualib
-#include "../deps/lauxhlib/lauxhlib.h"
+#include "lauxhlib.h"
 
 /**
  *  RFC 3986
