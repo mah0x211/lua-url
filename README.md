@@ -1,13 +1,14 @@
 lua-url
 ====
 
-url string utility.
+[![test](https://github.com/mah0x211/lua-url/actions/workflows/test.yml/badge.svg)](https://github.com/mah0x211/lua-url/actions/workflows/test.yml)
 
+url string utility.
 
 ## Installation
 
 ```sh
-luarocks install --from=http://mah0x211.github.io/rocks/ url
+luarocks install url
 ```
 
 
@@ -73,26 +74,26 @@ returns the table of parsed url.
 ```lua
 local url = require('url');
 
-local res, cur, err = url.parse('head http://user:pass@host.com:8080/p/a/t/h/?query=string#hash tail', true, 5);
+local res, cur, err = url.parse('head http://user:pass@host.com:8080/p/a/t/h/?query=string#hash tail', true, 5)
 
 --[[
+cur = 62,
+err = " ",
 res = {
-    scheme = "http",
-    userinfo = "user:pass",
-    user = "user",
-    password = "pass",
+    fragment = "hash",
     host = "host.com:8080",
     hostname = "host.com",
-    port = "8080",
+    password = "pass",
     path = "/p/a/t/h/",
+    port = "8080",
     query = "?query=string",
     queryParams = {
         query = "string"
     },
-    fragment = "hash"
+    scheme = "http",
+    user = "user",
+    userinfo = "user:pass"
 }
-cur = 62
-err = " "
 --]]
 
 
@@ -100,11 +101,11 @@ err = " "
 res, cur, err = url.parse('head ?query=string#hash tail', false, 5);
 
 --[[
+cur = 23,
+err = " ",
 res = {
     fragment = "hash",
-    query = "?query=string",
+    query = "?query=string"
 }
-cur = 23,
-err = " "
 --]]
 ```
