@@ -470,7 +470,7 @@ static inline int parse_queryparams(lua_State *L, unsigned char *url,
    switch (tail) {                                                             \
    case -1:                                                                    \
     lua_pushlstring(L, (const char *)url + head, len);                         \
-    lua_pushboolean(L, 1);                                                     \
+    lua_pushliteral(L, "");                                                    \
     break;                                                                     \
    case 0:                                                                     \
     lua_pushinteger(L, ++idx);                                                 \
@@ -479,6 +479,7 @@ static inline int parse_queryparams(lua_State *L, unsigned char *url,
    default:                                                                    \
     lua_pushlstring(L, (const char *)url + phead, tail);                       \
     lua_pushlstring(L, (const char *)url + head, len);                         \
+    phead = 0;                                                                 \
    }                                                                           \
    lua_rawset(L, -3);                                                          \
    nparam++;                                                                   \
