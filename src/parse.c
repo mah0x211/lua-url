@@ -1,4 +1,4 @@
-/*
+/**
  *  Copyright (C) 2017 Masatoshi Teruya
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a
@@ -312,6 +312,144 @@ static inline int parse_querystring(lua_State *L, unsigned char *url,
     return 0;
 }
 
+static inline int parse_queryparams_as_array(lua_State *L, unsigned char *url,
+                                             size_t urllen, size_t *cur)
+{
+    size_t pos   = *cur + 1;
+    size_t head  = pos;
+    size_t tail  = -1;
+    size_t phead = 0;
+    size_t len   = 0;
+    int nparam   = 0;
+
+    lua_pushstring(L, "queryParams");
+    lua_newtable(L);
+
+#define push_v2tbl(L, v, vl)                                                   \
+ do {                                                                          \
+  lua_pushlstring(L, (v), (vl));                                               \
+  lua_rawseti(L, -2, lauxh_rawlen(L, -2) + 1);                                 \
+ } while (0)
+
+#define get_tbl(L, k, kl)                                                      \
+ do {                                                                          \
+  lua_pushlstring(L, (k), (kl));                                               \
+  lua_rawget(L, -2);                                                           \
+  if (lua_type(L, -1) != LUA_TTABLE) {                                         \
+   int ref = LUA_NOREF;                                                        \
+   lua_pop(L, 1);                                                              \
+   lua_pushlstring(L, (k), (kl));                                              \
+   lua_newtable(L);                                                            \
+   ref = lauxh_ref(L);                                                         \
+   lauxh_pushref(L, ref);                                                      \
+   lua_rawset(L, -3);                                                          \
+   lauxh_pushref(L, ref);                                                      \
+   lauxh_unref(L, ref);                                                        \
+  }                                                                            \
+ } while (0)
+
+#define push_k2tbl(L, k, kl)                                                   \
+ do {                                                                          \
+  get_tbl(L, k, kl);                                                           \
+  push_v2tbl(L, "", 0);                                                        \
+  lua_pop(L, 1);                                                               \
+ } while (0)
+
+#define push_kv2tbl(L, k, kl, v, vl)                                           \
+ do {                                                                          \
+  get_tbl(L, (k), (kl));                                                       \
+  push_v2tbl(L, v, vl);                                                        \
+  lua_pop(L, 1);                                                               \
+ } while (0)
+
+#define push_param()                                                           \
+ do {                                                                          \
+  if ((len = pos - head)) {                                                    \
+   switch (tail) {                                                             \
+   case -1:                                                                    \
+    push_k2tbl(L, (const char *)url + head, len);                              \
+    break;                                                                     \
+   case 0:                                                                     \
+    push_v2tbl(L, (const char *)url + head, len);                              \
+    break;                                                                     \
+   default:                                                                    \
+    push_kv2tbl(L, (const char *)url + phead, tail, (const char *)url + head,  \
+                len);                                                          \
+    phead = 0;                                                                 \
+   }                                                                           \
+   nparam++;                                                                   \
+  } else if (phead) {                                                          \
+   push_k2tbl(L, (const char *)url + phead, pos - phead - 1);                  \
+   nparam++;                                                                   \
+  }                                                                            \
+ } while (0)
+
+    for (; pos < urllen; pos++) {
+        switch (URIC[url[pos]]) {
+        // fragment
+        case '#':
+            // add query field
+            if (pos - *cur - 1) {
+                lauxh_pushlstr2tblat(L, "query", (const char *)url + *cur,
+                                     pos - *cur, 2);
+                push_param();
+            }
+            // paththrough
+
+        // illegal byte sequence
+        case 0:
+            // add queryParams field
+            if (nparam) {
+                lua_rawset(L, -3);
+            } else {
+                lua_pop(L, 2);
+            }
+            *cur = pos;
+            return url[pos];
+
+        // key-value separator
+        case '=':
+            phead = head;
+            tail  = pos - head;
+            head  = pos + 1;
+            break;
+
+        // next key-value pair
+        case '&':
+            push_param();
+            head = pos + 1;
+            tail = -1;
+            break;
+
+        // percent-encoded
+        case '%':
+            // invalid percent-encoded format
+            if (!is_percentencoded(url + pos + 1)) {
+                lua_rawset(L, -3);
+                *cur = pos;
+                return '%';
+            }
+            // skip "%<HEX>"
+            pos += 2;
+            break;
+        }
+    }
+
+    // add queryParams and query field
+    if (pos - *cur - 1) {
+        push_param();
+        lua_rawset(L, -3);
+        lauxh_pushlstr2tbl(L, "query", (const char *)url + *cur, pos - *cur);
+    } else {
+        lua_pop(L, 2);
+    }
+    *cur = pos;
+
+    return 0;
+
+#undef push_param
+}
+
 static inline int parse_queryparams(lua_State *L, unsigned char *url,
                                     size_t urllen, size_t *cur)
 {
@@ -332,7 +470,7 @@ static inline int parse_queryparams(lua_State *L, unsigned char *url,
    switch (tail) {                                                             \
    case -1:                                                                    \
     lua_pushlstring(L, (const char *)url + head, len);                         \
-    lua_pushboolean(L, 1);                                                     \
+    lua_pushliteral(L, "");                                                    \
     break;                                                                     \
    case 0:                                                                     \
     lua_pushinteger(L, ++idx);                                                 \
@@ -341,9 +479,15 @@ static inline int parse_queryparams(lua_State *L, unsigned char *url,
    default:                                                                    \
     lua_pushlstring(L, (const char *)url + phead, tail);                       \
     lua_pushlstring(L, (const char *)url + head, len);                         \
+    phead = 0;                                                                 \
    }                                                                           \
    lua_rawset(L, -3);                                                          \
    nparam++;                                                                   \
+  } else if (phead) {                                                          \
+   lua_pushlstring(L, (const char *)url + phead, pos - phead - 1);             \
+   lua_pushliteral(L, "");                                                     \
+   nparam++;                                                                   \
+   lua_rawset(L, -3);                                                          \
   }                                                                            \
  } while (0)
 
@@ -494,17 +638,27 @@ static int parse_lua(lua_State *L)
     int chk_scheme          = 1;
     int omit_hostname       = 0;
     query_parser_t parseqry = parse_querystring;
+    int param_array         = 0;
 
     // check arguments
-    if (argc > 1) {
-        // parse query-params option
-        if (lauxh_checkboolean(L, 2)) {
-            parseqry = parse_queryparams;
-        }
-
+    if (argc > 4) {
+        lua_settop(L, 4);
+    }
+    switch (argc) {
+    case 4:
+        // store the query parameters as an array
+        param_array = lauxh_optboolean(L, 4, param_array);
+    case 3:
         // initial cursor option
-        if (argc > 2) {
-            cur = lauxh_checkuint64(L, 3);
+        cur = lauxh_optuint64(L, 3, cur);
+    case 2:
+        // parse query-params option
+        if (lauxh_optboolean(L, 2, 0)) {
+            if (param_array) {
+                parseqry = parse_queryparams_as_array;
+            } else {
+                parseqry = parse_queryparams;
+            }
         }
     }
 
