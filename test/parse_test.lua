@@ -220,7 +220,7 @@ function testcase.parse_query()
     })
 
     -- test that parse query params
-    s = '?q1=v1-1&q1=v1-1&q2=v2'
+    s = '?q1=v1-1&q1=v1-1&q2=v2&q3=&q4='
     u, cur, err = parse(s, true)
     assert.equal(cur, #s)
     assert.is_nil(err)
@@ -229,6 +229,8 @@ function testcase.parse_query()
         queryParams = {
             q1 = 'v1-1',
             q2 = 'v2',
+            q3 = '',
+            q4 = '',
         },
     })
 

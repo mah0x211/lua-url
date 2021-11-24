@@ -483,6 +483,11 @@ static inline int parse_queryparams(lua_State *L, unsigned char *url,
    }                                                                           \
    lua_rawset(L, -3);                                                          \
    nparam++;                                                                   \
+  } else if (phead) {                                                          \
+   lua_pushlstring(L, (const char *)url + phead, pos - phead - 1);             \
+   lua_pushliteral(L, "");                                                     \
+   nparam++;                                                                   \
+   lua_rawset(L, -3);                                                          \
   }                                                                            \
  } while (0)
 
