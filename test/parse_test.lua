@@ -134,7 +134,12 @@ end
 
 function testcase.parse_without_userinfo_port_pathname()
     -- test that parse url without userinfo, port and pathname
-    local segments = {'http://', 'host.com', '?q1=v1-1&q1=v1-1&q2=v2', '#hash'}
+    local segments = {
+        'http://',
+        'host.com',
+        '?q1=v1-1&q1=v1-1&q2=v2',
+        '#hash',
+    }
     local s = concat(segments)
     local u, cur, err = parse(s)
     assert.equal(cur, #s)
@@ -150,7 +155,11 @@ end
 
 function testcase.parse_without_userinfo_port_pathname_query()
     -- test that parse url without userinfo, port, pathname and query
-    local segments = {'http://', 'host.com', '#hash'}
+    local segments = {
+        'http://',
+        'host.com',
+        '#hash',
+    }
     local s = concat(segments)
     local u, cur, err = parse(s)
     assert.equal(cur, #s)
@@ -165,17 +174,29 @@ end
 
 function testcase.parse_without_userinfo_port_pathname_query_fragment()
     -- test that parse url without userinfo, port, pathname, query and fragment
-    local segments = {'http://', 'host.com'}
+    local segments = {
+        'http://',
+        'host.com',
+    }
     local s = concat(segments)
     local u, cur, err = parse(s)
     assert.equal(cur, #s)
     assert.is_nil(err)
-    assert.equal(u, {scheme = 'http', host = 'host.com', hostname = 'host.com'})
+    assert.equal(u, {
+        scheme = 'http',
+        host = 'host.com',
+        hostname = 'host.com',
+    })
 end
 
 function testcase.parse_without_authority()
     -- test that parse file scheme
-    local segments = {'file://', '/p/a/t/h/', '?q1=v1-1&q1=v1-1&q2=v2', '#hash'}
+    local segments = {
+        'file://',
+        '/p/a/t/h/',
+        '?q1=v1-1&q1=v1-1&q2=v2',
+        '#hash',
+    }
     local s = concat(segments)
     local u, cur, err = parse(s)
     assert.equal(cur, #s)
@@ -194,7 +215,9 @@ function testcase.parse_query()
     local u, cur, err = parse(s)
     assert.equal(cur, #s)
     assert.is_nil(err)
-    assert.equal(u, {query = '?q1=v1-1&q1=v1-1&q2=v2'})
+    assert.equal(u, {
+        query = s,
+    })
 
     -- test that parse query params
     s = '?q1=v1-1&q1=v1-1&q2=v2'
@@ -202,8 +225,36 @@ function testcase.parse_query()
     assert.equal(cur, #s)
     assert.is_nil(err)
     assert.equal(u, {
-        query = '?q1=v1-1&q1=v1-1&q2=v2',
-        queryParams = {q1 = 'v1-1', q2 = 'v2'},
+        query = s,
+        queryParams = {
+            q1 = 'v1-1',
+            q2 = 'v2',
+        },
+    })
+
+    -- test that parse query params as array
+    s = '?q1=v1-1&q1=v1-2&q2=v2&=v3&q3&q3=v4&=v5&q2='
+    u, cur, err = parse(s, true, nil, true)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        query = s,
+        queryParams = {
+            'v3',
+            'v5',
+            q1 = {
+                'v1-1',
+                'v1-2',
+            },
+            q2 = {
+                'v2',
+                '',
+            },
+            q3 = {
+                '',
+                'v4',
+            },
+        },
     })
 end
 

@@ -6,3 +6,4 @@ chop_down_table: true
 extra_sep_at_table_end: true
 keep_simple_control_block_one_line: false
 keep_simple_function_one_line: false
+column_table_limit: 1

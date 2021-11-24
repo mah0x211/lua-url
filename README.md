@@ -52,7 +52,7 @@ returns the decoded string.
 
 ## Parser
 
-### res, cur, err = parse( url [, parseQuery [, init]] )
+### res, cur, err = parse( url [, parseQuery [, init [, param_array]]] )
 
 returns the table of parsed url.
 
@@ -60,7 +60,8 @@ returns the table of parsed url.
 
 - `url:string`: url string.
 - `parseQuery:boolean`: parse query-string if `true`.
-- `cur:number`: where to cursor start position. (default `0`)
+- `init:integer`: where to cursor start position. (default `0`)
+- `param_array:boolean`: store the query parameters as an array.. (default `false`)
 
 **Returns**
 
