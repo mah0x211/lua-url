@@ -492,6 +492,7 @@ static int parse_lua(lua_State *L)
     size_t userinfo         = 0;
     size_t portnum          = 0;
     int chk_scheme          = 1;
+    int omit_hostname       = 0;
     query_parser_t parseqry = parse_querystring;
 
     // check arguments
@@ -665,6 +666,12 @@ PARSE_HOST:
         lua_pushlstring(L, src + cur - 1, 1);
         return 3;
 
+    case ':':
+        omit_hostname = 1;
+        tail          = cur;
+        cur++;
+        goto PARSE_PORT;
+
     default:
         // illegal byte sequence
         if (url[cur] != '%' && !isalnum(url[cur])) {
@@ -824,8 +831,8 @@ PARSE_PORT:
 
         default:
             // illegal byte sequence
-            // userinfo already parsed
-            if (userinfo) {
+            // userinfo already parsed or hostname ommited
+            if (userinfo || omit_hostname) {
                 lua_pushinteger(L, cur);
                 lua_pushlstring(L, src + cur, 1);
                 return 3;
