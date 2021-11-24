@@ -505,10 +505,9 @@ static int parse_lua(lua_State *L)
         if (argc > 2) {
             cur = lauxh_checkuint64(L, 3);
         }
-
-        lua_settop(L, 1);
     }
 
+    lua_settop(L, 1);
     lua_newtable(L);
     if (!urllen) {
         lua_pushinteger(L, 0);
@@ -654,8 +653,14 @@ PARSE_HOST:
     case '[':
         goto PARSE_IPV6;
 
-    // illegal byte sequence
+    case '/':
     case '.':
+        // host required if userinfo is defined
+        if (!userinfo) {
+            // some scheme (e.g. file) can be omit parsing the authority
+            goto PARSE_PATHNAME;
+        }
+        // illegal byte sequence
         lua_pushinteger(L, cur - 1);
         lua_pushlstring(L, src + cur - 1, 1);
         return 3;
