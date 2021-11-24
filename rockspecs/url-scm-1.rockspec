@@ -17,7 +17,12 @@ build = {
     type = "builtin",
     modules = {
         url = "url.lua",
-        ["url.codec"] = "src/codec.c",
-        ["url.parse"] = "src/parse.c"
+        ["url.codec"] = {
+            sources = { "src/codec.c" },
+        },
+        ["url.parse"] = {
+            incdirs = { "deps/lauxhlib" },
+            sources = { "src/parse.c" },
+        },
     }
 }
