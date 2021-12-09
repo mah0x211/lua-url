@@ -724,9 +724,10 @@ PARSE_PATHNAME:
         // set chk_scheme to 0 if not scheme characters
         case '!':
         case '$':
-        // 0x24-2A = "&" "'" "(" ")" "*"
+        // 0x24-2A = & ' ( ) *
         case '&' ... '*':
         case ',':
+        case '.':
         case '/':
         case ';':
         case '=':
