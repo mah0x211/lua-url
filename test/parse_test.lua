@@ -189,6 +189,20 @@ function testcase.parse_without_userinfo_port_pathname_query_fragment()
     })
 end
 
+function testcase.parse_without_scheme()
+    -- test that parse url without scheme, userinfo, port, pathname, query and fragment
+    local segments = {
+        'host.com:8080',
+    }
+    local s = concat(segments)
+    local u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        path = 'host.com:8080',
+    })
+end
+
 function testcase.parse_without_authority()
     -- test that parse file scheme
     local segments = {
