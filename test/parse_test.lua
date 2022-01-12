@@ -1,5 +1,4 @@
 local concat = table.concat
-local assert = require('assertex')
 local testcase = require('testcase')
 local parse = require('url.parse')
 

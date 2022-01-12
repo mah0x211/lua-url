@@ -1,5 +1,4 @@
 local testcase = require('testcase')
-local assert = require('assertex')
 local url = require('url');
 
 local TESTSTR = [[ !"#$%&\'()*+,-./\n
