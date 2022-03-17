@@ -36,3 +36,15 @@ function testcase.encode_decode()
     assert.not_equal(TESTSTR, url.decode2396(ec))
     assert.equal(TESTSTR, url.decode3986(ec))
 end
+
+function testcase.decode_unicode_point()
+    -- test that decode unicode point
+    assert.equal(url.decodeURI(
+                     '%u0041 %u00E8 %u3042 %uD869%uDEB2 %u0041 %u00E8 %u3042 %uD869%uDEB2'),
+                 'A è あ 𪚲 A è あ 𪚲')
+
+    -- test that returns err if invalid code point
+    local s, err = url.decodeURI('%4')
+    assert.is_nil(s)
+    assert.equal(err, 22)
+end
