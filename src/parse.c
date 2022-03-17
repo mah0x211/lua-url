@@ -27,12 +27,11 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <lauxhlib.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-// lualib
-#include "lauxhlib.h"
 
 /**
  *  RFC 3986
