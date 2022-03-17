@@ -32,7 +32,8 @@ jobs:
           - "5.2"
           - "5.3"
           - "5.4"
-
+          - "luajit-2.0.5"
+          - "luajit-openresty"
     steps:
     -
       name: Checkout
@@ -47,16 +48,29 @@ jobs:
     -
       name: Setup Luarocks
       uses: leafo/gh-actions-luarocks@v4.0.0
-    -
-      name: Install Tools
-      run: |
-        luarocks install testcase
+      with:
+        luaRocksVersion: 3.8.0
     -
       name: Install
       run: |
-        luarocks make
+        luarocks make URL_COVERAGE=1
+    -
+      name: Install Tools
+      run: |
+        sudo apt install lcov -y
+        luarocks install testcase
     -
       name: Run Test
       run: |
         testcase ./test
+    -
+      name: Generate coverage reports
+      run: |
+        sh ./covgen.sh
+    -
+      name: Upload c coverage to Codecov
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./coverage/lcov.info
+        flags: unittests
 
