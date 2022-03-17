@@ -12,6 +12,7 @@ description = {
 }
 dependencies = {
     "lua >= 5.1",
+    "lauxhlib >= 0.3.1",
 }
 build = {
     type = "builtin",
@@ -21,7 +22,6 @@ build = {
             sources = { "src/codec.c" },
         },
         ["url.parse"] = {
-            incdirs = { "deps/lauxhlib" },
             sources = { "src/parse.c" },
         },
     }

@@ -27,14 +27,12 @@
  */
 
 #include <errno.h>
+#include <lauxhlib.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-// lualib
-#include <lauxlib.h>
-#include <lualib.h>
 
 /*
     encodeURI   : 0-9 a-zA-Z !#$&'()*+,-./:;=?@_~
@@ -234,7 +232,7 @@ static unsigned char *encode(char *str, size_t slen, const unsigned char *tbl,
 static int encode_lua(lua_State *L, const unsigned char *tbl)
 {
     size_t len      = 0;
-    const char *src = luaL_checklstring(L, 1, &len);
+    const char *src = lauxh_checklstring(L, 1, &len);
     char *dest      = (char *)encode((char *)src, len, tbl, &len);
 
     if (dest) {
@@ -461,7 +459,7 @@ INVALID_ENCODING:
 static int decode_lua(lua_State *L, const unsigned char *tbl)
 {
     size_t len      = 0;
-    const char *src = luaL_checklstring(L, 1, &len);
+    const char *src = lauxh_checklstring(L, 1, &len);
     char *dest      = (char *)decode((char *)src, len, tbl, &len);
 
     if (dest) {
@@ -507,9 +505,7 @@ LUALIB_API int luaopen_url_codec(lua_State *L)
     lua_newtable(L);
     i = 0;
     while (method[i].name) {
-        lua_pushstring(L, method[i].name);
-        lua_pushcfunction(L, method[i].func);
-        lua_rawset(L, -3);
+        lauxh_pushfn2tbl(L, method[i].name, method[i].func);
         i++;
     }
 
