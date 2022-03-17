@@ -184,16 +184,15 @@ static const unsigned char UNRESERVED_3986[256] = {
 static const unsigned char DEC2HEX[16] = "0123456789ABCDEF";
 
 static const char HEX2DEC[256] = {
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     //  0  1  2  3  4  5  6  7  8  9
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, -1, -1, -1, -1, -1, -1,
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 0, 0, 0, 0, 0, 0,
     //  A   B   C   D   E   F
-    10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+    11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0,
     //  a   b   c   d   e   f
-    10, 11, 12, 13, 14, 15};
+    11, 12, 13, 14, 15, 16};
 
 // %[hex][hex]*4
 #define CODEC_UTF8ENC_LEN 12
@@ -204,12 +203,11 @@ static int encode_lua(lua_State *L, const unsigned char *tbl)
     size_t len            = 0;
     unsigned char *src    = (unsigned char *)lauxh_checklstring(L, 1, &len);
     unsigned char dest[3] = {'%', 0};
-    size_t i              = 0;
     luaL_Buffer b         = {0};
 
     lua_settop(L, 1);
     luaL_buffinit(L, &b);
-    for (; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
         if (tbl[*src]) {
             luaL_addchar(&b, *src);
         } else {
@@ -261,11 +259,9 @@ static int unicode_pt2utf8(luaL_Buffer *b, uint32_t cp)
         dest[1] = 0x80 | (cp & 0x3f);
         luaL_addlstring(b, (char *)dest, 2);
     }
-    // invalid code-point
     // range: u+d800 ... u+dfff use for surrogate pairs
     else if (cp > 0xD7FF && cp < 0xE000) {
-        errno = ERANGE;
-        return -1;
+        return -2;
     }
     // range: u+0800 ... u+ffff
     //   bit: [1110 yyyy]:0xe0
@@ -291,7 +287,6 @@ static int unicode_pt2utf8(luaL_Buffer *b, uint32_t cp)
         dest[2] = 0x80 | ((cp >> 6) & 0x3f);
         dest[3] = 0x80 | (cp & 0x3f);
         luaL_addlstring(b, (char *)dest, 4);
-
     }
     /* UTF-8 now max 4 bytes
     // range: u+200000 ... u+3FFFFFF
@@ -301,12 +296,12 @@ static int unicode_pt2utf8(luaL_Buffer *b, uint32_t cp)
     //        [10xx xxxx]:0x80
     //        [10xx xxxx]:0x80
     else if( cp < 0x400000 ){
-        dest[decLen] = 0xf8 | ( cp >> 24 );
-        dest[decLen+1] = 0x80 | ( ( cp >> 18 ) & 0x3f );
-        dest[decLen+2] = 0x80 | ( ( cp >> 12 ) & 0x3f );
-        dest[decLen+3] = 0x80 | ( ( cp >> 6 ) & 0x3f );
-        dest[decLen+4] = 0x80 | ( cp & 0x3f );
-        decLen += 5;
+        dest[0] = 0xf8 | ( cp >> 24 );
+        dest[1] = 0x80 | ( ( cp >> 18 ) & 0x3f );
+        dest[2] = 0x80 | ( ( cp >> 12 ) & 0x3f );
+        dest[3] = 0x80 | ( ( cp >> 6 ) & 0x3f );
+        dest[4] = 0x80 | ( cp & 0x3f );
+        luaL_addlstring(b, (char *)dest, 5);
     }
     // range: u+4000000 ... u+7FFFFFFF
     //   bit: [1111 110y]:0xfc
@@ -316,13 +311,13 @@ static int unicode_pt2utf8(luaL_Buffer *b, uint32_t cp)
     //        [10xx xxxx]:0x80
     //        [10xx xxxx]:0x80
     else if( cp < 0x800000 ){
-        dest[decLen] = 0xfc | ( cp >> 30 );
-        dest[decLen+1] = 0x80 | ( ( cp >> 24 ) & 0x3f );
-        dest[decLen+2] = 0x80 | ( ( cp >> 18 ) & 0x3f );
-        dest[decLen+3] = 0x80 | ( ( cp >> 12 ) & 0x3f );
-        dest[decLen+4] = 0x80 | ( ( cp >> 6 ) & 0x3f );
-        dest[decLen+5] = 0x80 | ( cp & 0x3f );
-        decLen += 6;
+        dest[0] = 0xfc | ( cp >> 30 );
+        dest[1] = 0x80 | ( ( cp >> 24 ) & 0x3f );
+        dest[2] = 0x80 | ( ( cp >> 18 ) & 0x3f );
+        dest[3] = 0x80 | ( ( cp >> 12 ) & 0x3f );
+        dest[4] = 0x80 | ( ( cp >> 6 ) & 0x3f );
+        dest[5] = 0x80 | ( cp & 0x3f );
+        luaL_addlstring(b, (char *)dest, 6);
     }
     //*/
     // invalid: code-point > 0x7FFFFFFF
@@ -342,20 +337,18 @@ static int unicode_pt2utf8(luaL_Buffer *b, uint32_t cp)
 static int decode(lua_State *L, char *str, size_t slen,
                   const unsigned char *tbl)
 {
-    unsigned char *src = (unsigned char *)str;
-    uint32_t hl, hi, lo;
-    size_t i      = 0;
     luaL_Buffer b = {0};
 
     luaL_buffinit(L, &b);
 
-    for (; i < slen; i++) {
+    for (size_t i = 0; i < slen; i++) {
+        unsigned char *src = (unsigned char *)str + i;
         if (*src != '%') {
             luaL_addchar(&b, *src);
-            src++;
+            continue;
         }
         // percent-encoding(%hex) must have more than 2 byte strings after '%'.
-        else if (i + 2 > slen) {
+        else if (slen < i + 2) {
             errno = EINVAL;
             return -1;
         }
@@ -388,38 +381,51 @@ static int decode(lua_State *L, char *str, size_t slen,
                 0x7a4[0111 1010 0100] = 1956
         */
         // %[hex]*2
-        else if (HEX2DEC[src[1]] > -1 && HEX2DEC[src[2]] > -1) {
+        else if (HEX2DEC[src[1]] && HEX2DEC[src[2]]) {
             /*
-                hi = HEX2DEC( src[1] ) << 4;
-                lo = HEX2DEC( src[2] );
+                hi = HEX2DEC( src[1] )-1  << 4;
+                lo = HEX2DEC( src[2] )-1;
                 hl = hi | lo;
             */
-            hl = (HEX2DEC[src[1]] << 4) | HEX2DEC[src[2]];
+            uint32_t hl = ((HEX2DEC[src[1]] - 1) << 4) | (HEX2DEC[src[2]] - 1);
+
             if (!tbl[hl]) {
                 luaL_addchar(&b, hl);
             } else {
                 luaL_addlstring(&b, (char *)src, 3);
             }
             i += 2;
-            src += 3;
+            continue;
         }
         // %u[hex]*4
-        else if (src[1] == 'u' && HEX2DEC[src[2]] > -1 &&
-                 HEX2DEC[src[3]] > -1 && HEX2DEC[src[4]] > -1 &&
-                 HEX2DEC[src[5]] > -1) {
-            hi = HEX2DEC[src[2]] << 4 | HEX2DEC[src[3]];
-            lo = HEX2DEC[src[4]] << 4 | HEX2DEC[src[5]];
-            hl = (hi << 8) | lo;
-            if (unicode_pt2utf8(&b, hl) == -1) {
-                errno = EINVAL;
-                return -1;
+        else if (src[1] == 'u' && HEX2DEC[src[2]] && HEX2DEC[src[3]] &&
+                 HEX2DEC[src[4]] && HEX2DEC[src[5]]) {
+            uint32_t hi = (HEX2DEC[src[2]] - 1) << 4 | (HEX2DEC[src[3]] - 1);
+            uint32_t lo = (HEX2DEC[src[4]] - 1) << 4 | (HEX2DEC[src[5]] - 1);
+            uint32_t hl = (hi << 8) | lo;
+
+            switch (unicode_pt2utf8(&b, hl)) {
+            case 0:
+                i += 5;
+                continue;
+            case -2:
+                // surrogate pairs
+                if (src[6] == '%' && src[7] == 'u' && HEX2DEC[src[8]] &&
+                    HEX2DEC[src[9]] && HEX2DEC[src[10]] && HEX2DEC[src[11]]) {
+                    size_t surp = 0x10000 + (hl - 0xD800) * 0x400;
+
+                    hi = (HEX2DEC[src[8]] - 1) << 4 | (HEX2DEC[src[9]] - 1);
+                    lo = (HEX2DEC[src[10]] - 1) << 4 | (HEX2DEC[src[11]] - 1);
+                    surp += ((hi << 8) | lo) - 0xDC00;
+                    if (unicode_pt2utf8(&b, surp) == 0) {
+                        i += 11;
+                        continue;
+                    }
+                }
             }
-            i += 4;
-            src += 6;
-        } else {
-            errno = EINVAL;
-            return -1;
         }
+        errno = EINVAL;
+        return -1;
     }
 
     luaL_pushresult(&b);
