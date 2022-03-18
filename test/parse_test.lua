@@ -248,7 +248,7 @@ function testcase.parse_pathname()
         path = '/foo/bar/baz%20qux',
     })
 
-    -- test that parse path with frament
+    -- test that parse path with fragment
     s = '/foo/bar/baz%20qux#fragment-value'
     u, cur, err = parse(s)
     assert.equal(cur, #s)
@@ -285,10 +285,29 @@ function testcase.parse_query_string()
         query = s,
     })
 
-    -- test that return an error if contains a invalid percent-encoded string
-    s = '?q1=v1-1%2&q2=v2'
+    -- test that parse query string with fragment
+    s = '?q1=v1-1#&q2=v2'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        query = '?q1=v1-1',
+        fragment = '&q2=v2',
+    })
+
+    -- test that return an error if contains a invalid character
+    s = '?q1=v1-1|#&q2=v2'
     u, cur, err = parse(s)
     assert.equal(cur, 8)
+    assert.equal(err, '|')
+    assert.equal(u, {
+        query = '?q1=v1-1',
+    })
+
+    -- test that return an error if contains a invalid percent-encoded string
+    s = '?q1=v1-1&%2q2=v2'
+    u, cur, err = parse(s)
+    assert.equal(cur, 9)
     assert.equal(err, '%')
     assert.equal(u, {})
 end
