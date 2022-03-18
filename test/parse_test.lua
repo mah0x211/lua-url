@@ -238,6 +238,102 @@ function testcase.parse_without_authority()
     })
 end
 
+function testcase.parse_pathname()
+    -- test that parse path
+    local s = '/foo/bar/baz%20qux'
+    local u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        path = '/foo/bar/baz%20qux',
+    })
+
+    -- test that parse path with frament
+    s = '/foo/bar/baz%20qux#fragment-value'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        path = '/foo/bar/baz%20qux',
+        fragment = 'fragment-value',
+    })
+
+    -- test that return an error if contains a invalid character
+    s = '/foo/bar|baz%20qux'
+    u, cur, err = parse(s, true)
+    assert.equal(cur, 8)
+    assert.equal(err, '|')
+    assert.equal(u, {
+        path = '/foo/bar',
+    })
+
+    -- test that return an error if contains a invalid percent-encoded string
+    s = '/foo/bar/baz%2qux'
+    u, cur, err = parse(s, true)
+    assert.equal(cur, 12)
+    assert.equal(err, '%')
+    assert.equal(u, {})
+end
+
+function testcase.parse_query_string()
+    -- test that parse query
+    local s = '?q1=v1-1%20&q1=v1-1&q2=v2'
+    local u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        query = s,
+    })
+
+    -- test that return an error if contains a invalid percent-encoded string
+    s = '?q1=v1-1%2&q2=v2'
+    u, cur, err = parse(s)
+    assert.equal(cur, 8)
+    assert.equal(err, '%')
+    assert.equal(u, {})
+end
+
+function testcase.parse_query_params()
+    -- test that parse query
+    local s = '?q1=v1-1&q1=v1-1%20&q2=v2'
+    local u, cur, err = parse(s, true)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        query = s,
+        queryParams = {
+            q1 = 'v1-1%20',
+            q2 = 'v2',
+        },
+    })
+
+    -- test that return an error if contains a invalid character
+    s = '?q1=v1-1&q2=v2|'
+    u, cur, err = parse(s, true)
+    assert.equal(cur, 14)
+    assert.equal(err, '|')
+    assert.equal(u, {
+        query = '?q1=v1-1&q2=v2',
+        queryParams = {
+            q1 = 'v1-1',
+            q2 = 'v2',
+        },
+    })
+
+    -- test that return an error if contains a invalid percent-encoded string
+    s = '?q1=v1-1&q2=%2v2'
+    u, cur, err = parse(s, true)
+    assert.equal(cur, 12)
+    assert.equal(err, '%')
+    assert.equal(u, {
+        query = '?q1=v1-1&q2=',
+        queryParams = {
+            q1 = 'v1-1',
+            q2 = '',
+        },
+    })
+end
+
 function testcase.parse_query()
     -- test that parse query
     local s = '?q1=v1-1&q1=v1-1&q2=v2'

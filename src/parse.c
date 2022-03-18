@@ -497,18 +497,18 @@ static inline int parse_queryparams(lua_State *L, unsigned char *url,
 
     for (; pos < urllen; pos++) {
         switch (URIC[url[pos]]) {
+        // illegal byte sequence
+        case 0:
+            // fallthrough
+
         // fragment
         case '#':
             // add query field
             if (pos - *cur - 1) {
+                push_param();
                 lauxh_pushlstr2tblat(L, "query", (const char *)url + *cur,
                                      pos - *cur, 2);
-                push_param();
             }
-            // fallthrough
-
-        // illegal byte sequence
-        case 0:
             // add queryParams field
             if (nparam) {
                 lua_rawset(L, -3);
@@ -536,7 +536,15 @@ static inline int parse_queryparams(lua_State *L, unsigned char *url,
         case '%':
             // invalid percent-encoded format
             if (!is_percentencoded(url + pos + 1)) {
-                lua_rawset(L, -3);
+                push_param();
+                // add queryParams field
+                if (nparam) {
+                    lua_rawset(L, -3);
+                    lauxh_pushlstr2tbl(L, "query", (const char *)url + *cur,
+                                       pos - *cur);
+                } else {
+                    lua_pop(L, 2);
+                }
                 *cur = pos;
                 return '%';
             }
