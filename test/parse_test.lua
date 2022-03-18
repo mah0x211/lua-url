@@ -292,6 +292,94 @@ function testcase.parse_scheme()
     assert.equal(u, {})
 end
 
+function testcase.parse_host()
+    -- test that parse host
+    local s = 'http://example.com'
+    local u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        host = 'example.com',
+        hostname = 'example.com',
+    })
+
+    -- test that parse host that contains percent-encoded string
+    s = 'http://ex%45mple.com'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        host = 'ex%45mple.com',
+        hostname = 'ex%45mple.com',
+    })
+
+    -- test that parse ipv4 host
+    s = 'http://127.0.0.1'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        host = '127.0.0.1',
+        hostname = '127.0.0.1',
+    })
+
+    -- test that return an error if found invalid character
+    s = 'http://example.com|'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://example.com')
+    assert.equal(err, '|')
+    assert.equal(u, {
+        scheme = 'http',
+        host = 'example.com',
+        hostname = 'example.com',
+    })
+
+    -- test that return an error if invalid host format
+    s = 'http://$localhost'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://')
+    assert.equal(err, '$')
+    assert.equal(u, {
+        scheme = 'http',
+    })
+
+    -- test that return an error if contains a invalid percent-encoded string
+    s = 'http://exa%2mple.com/foo/bar'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://exa')
+    assert.equal(err, '%')
+    assert.equal(u, {
+        scheme = 'http',
+    })
+
+    -- test that return an error if no host after userinfo
+    s = 'http://user:pswd@/foo/bar'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://user:pswd@')
+    assert.equal(err, '/')
+    assert.equal(u, {
+        scheme = 'http',
+        password = 'pswd',
+        user = 'user',
+        userinfo = 'user:pswd',
+    })
+
+    -- test that return an error if userinfo is declared more than once
+    s = 'http://user:pswd@example.com@example.com/foo/bar'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://user:pswd@example.com')
+    assert.equal(err, '@')
+    assert.equal(u, {
+        scheme = 'http',
+        password = 'pswd',
+        user = 'user',
+        userinfo = 'user:pswd',
+    })
+end
+
 function testcase.parse_pathname()
     -- test that parse path
     local s = '/foo/bar/baz%20qux'
@@ -315,7 +403,7 @@ function testcase.parse_pathname()
     -- test that return an error if contains a invalid character
     s = '/foo/bar|baz%20qux'
     u, cur, err = parse(s, true)
-    assert.equal(cur, 8)
+    assert.equal(string.sub(s, 1, cur), '/foo/bar')
     assert.equal(err, '|')
     assert.equal(u, {
         path = '/foo/bar',
@@ -324,7 +412,7 @@ function testcase.parse_pathname()
     -- test that return an error if contains a invalid percent-encoded string
     s = '/foo/bar/baz%2qux'
     u, cur, err = parse(s, true)
-    assert.equal(cur, 12)
+    assert.equal(string.sub(s, 1, cur), '/foo/bar/baz')
     assert.equal(err, '%')
     assert.equal(u, {})
 end
@@ -352,7 +440,7 @@ function testcase.parse_query_string()
     -- test that return an error if contains a invalid character
     s = '?q1=v1-1|#&q2=v2'
     u, cur, err = parse(s)
-    assert.equal(cur, 8)
+    assert.equal(string.sub(s, 1, cur), '?q1=v1-1')
     assert.equal(err, '|')
     assert.equal(u, {
         query = '?q1=v1-1',
@@ -361,7 +449,7 @@ function testcase.parse_query_string()
     -- test that return an error if contains a invalid percent-encoded string
     s = '?q1=v1-1&%2q2=v2'
     u, cur, err = parse(s)
-    assert.equal(cur, 9)
+    assert.equal(string.sub(s, 1, cur), '?q1=v1-1&')
     assert.equal(err, '%')
     assert.equal(u, {})
 end
@@ -383,7 +471,7 @@ function testcase.parse_query_params()
     -- test that return an error if contains a invalid character
     s = '?q1=v1-1&q2=v2|'
     u, cur, err = parse(s, true)
-    assert.equal(cur, 14)
+    assert.equal(string.sub(s, 1, cur), '?q1=v1-1&q2=v2')
     assert.equal(err, '|')
     assert.equal(u, {
         query = '?q1=v1-1&q2=v2',
@@ -396,7 +484,7 @@ function testcase.parse_query_params()
     -- test that return an error if contains a invalid percent-encoded string
     s = '?q1=v1-1&q2=%2v2'
     u, cur, err = parse(s, true)
-    assert.equal(cur, 12)
+    assert.equal(string.sub(s, 1, cur), '?q1=v1-1&q2=')
     assert.equal(err, '%')
     assert.equal(u, {
         query = '?q1=v1-1&q2=',
@@ -429,7 +517,7 @@ function testcase.parse_query_params_as_array()
     -- test that return an error if contains a invalid character
     s = '?q1=v1-1&q2=v2|'
     u, cur, err = parse(s, true, nil, true)
-    assert.equal(cur, 14)
+    assert.equal(string.sub(s, 1, cur), '?q1=v1-1&q2=v2')
     assert.equal(err, '|')
     assert.equal(u, {
         query = '?q1=v1-1&q2=v2',
@@ -446,6 +534,7 @@ function testcase.parse_query_params_as_array()
     -- test that return an error if contains a invalid percent-encoded string
     s = '?q1=v1-1&q2=v2-1&q2=%2v2-2'
     u, cur, err = parse(s, true, nil, true)
+    assert.equal(string.sub(s, 1, cur), '?q1=v1-1&q2=v2-1&q2=')
     assert.equal(cur, 20)
     assert.equal(err, '%')
     assert.equal(u, {
@@ -527,22 +616,25 @@ function testcase.parse_fragment()
     })
 
     -- test that parse empty fragment
-    u, cur, err = parse('#')
-    assert.equal(cur, 1)
+    s = '#'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
     assert.is_nil(err)
     assert.equal(u, {
         fragment = '',
     })
 
     -- test that return an error if contains a invalid percent-encoded string
-    u, cur, err = parse('#foo%1')
-    assert.equal(cur, 4)
+    s = '#foo%1'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), '#foo')
     assert.equal(err, '%')
     assert.equal(u, {})
 
     -- test that return an error if contains a invalid character
-    u, cur, err = parse('#fo|o')
-    assert.equal(cur, 3)
+    s = '#fo|o'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), '#fo')
     assert.equal(err, '|')
     assert.equal(u, {
         fragment = 'fo',
