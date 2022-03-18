@@ -334,6 +334,61 @@ function testcase.parse_query_params()
     })
 end
 
+function testcase.parse_query_params_as_array()
+    -- test that parse query
+    local s = '?q1=v1-1&q1=v1-1%20&q2=v2'
+    local u, cur, err = parse(s, true, nil, true)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        query = s,
+        queryParams = {
+            q1 = {
+                'v1-1',
+                'v1-1%20',
+            },
+            q2 = {
+                'v2',
+            },
+        },
+    })
+
+    -- test that return an error if contains a invalid character
+    s = '?q1=v1-1&q2=v2|'
+    u, cur, err = parse(s, true, nil, true)
+    assert.equal(cur, 14)
+    assert.equal(err, '|')
+    assert.equal(u, {
+        query = '?q1=v1-1&q2=v2',
+        queryParams = {
+            q1 = {
+                'v1-1',
+            },
+            q2 = {
+                'v2',
+            },
+        },
+    })
+
+    -- test that return an error if contains a invalid percent-encoded string
+    s = '?q1=v1-1&q2=v2-1&q2=%2v2-2'
+    u, cur, err = parse(s, true, nil, true)
+    assert.equal(cur, 20)
+    assert.equal(err, '%')
+    assert.equal(u, {
+        query = '?q1=v1-1&q2=v2-1&q2=',
+        queryParams = {
+            q1 = {
+                'v1-1',
+            },
+            q2 = {
+                'v2-1',
+                '',
+            },
+        },
+    })
+end
+
 function testcase.parse_query()
     -- test that parse query
     local s = '?q1=v1-1&q1=v1-1&q2=v2'
