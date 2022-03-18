@@ -843,8 +843,8 @@ PARSE_HOST:
             goto PARSE_PATHNAME;
         }
         // illegal byte sequence
-        lua_pushinteger(L, cur - 1);
-        lua_pushlstring(L, src + cur - 1, 1);
+        lua_pushinteger(L, cur);
+        lua_pushlstring(L, src + cur, 1);
         return 3;
 
     case ':':
@@ -854,10 +854,11 @@ PARSE_HOST:
         goto PARSE_PORT;
 
     default:
-        // illegal byte sequence
+        // host must be started with ALPHA / DIGIT / '%' (percent-encoded)
         if (url[cur] != '%' && !isalnum(url[cur])) {
-            lua_pushinteger(L, cur - 1);
-            lua_pushlstring(L, src + cur - 1, 1);
+            // illegal byte sequence
+            lua_pushinteger(L, cur);
+            lua_pushlstring(L, src + cur, 1);
             return 3;
         }
     }
