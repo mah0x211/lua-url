@@ -238,6 +238,60 @@ function testcase.parse_without_authority()
     })
 end
 
+function testcase.parse_scheme()
+    -- test that parse scheme with host
+    local s = 'http://localhost'
+    local u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        host = 'localhost',
+        hostname = 'localhost',
+    })
+
+    -- test that parse scheme with ipv6 host
+    s = 'https://[2001:db8:85a3:8d3:1319:8a2e:370:7348]:80'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'https',
+        host = '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:80',
+        hostname = '[2001:db8:85a3:8d3:1319:8a2e:370:7348]',
+        port = '80',
+    })
+
+    -- test that parse scheme with port
+    s = 'https://:80'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'https',
+        host = ':80',
+        hostname = '',
+        port = '80',
+    })
+
+    -- test that parse scheme with pathname
+    s = 'https://./foo/bar'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'https',
+        path = './foo/bar',
+    })
+
+    -- test that return an error if invalid scheme format
+    s = 'http:/localhost'
+    u, cur, err = parse(s)
+    assert.equal(cur, 4)
+    assert.equal(err, ':')
+    assert.equal(u, {})
+end
+
 function testcase.parse_pathname()
     -- test that parse path
     local s = '/foo/bar/baz%20qux'

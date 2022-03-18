@@ -815,17 +815,16 @@ PARSE_FRAGMENT:
     }
 
 PARSE_SCHEME:
-    // set "scheme" to scheme field
-    lauxh_pushlstr2tbl(L, "scheme", src + head, cur - head);
-    // skip ":"
-    cur++;
     // must be double-slash
-    // skip "//"
-    if ((cur + 1) >= urllen || url[cur++] != '/' || url[cur++] != '/') {
-        lua_pushinteger(L, cur - 1);
-        lua_pushlstring(L, src + cur - 1, 1);
+    if ((cur + 2) >= urllen || url[cur + 1] != '/' || url[cur + 2] != '/') {
+        lua_pushinteger(L, cur);
+        lua_pushlstring(L, src + cur, 1);
         return 3;
     }
+    // set "scheme" to scheme field
+    lauxh_pushlstr2tbl(L, "scheme", src + head, cur - head);
+    // skip "://"
+    cur += 3;
 
 PARSE_HOST:
     // parse host
@@ -882,9 +881,9 @@ PARSE_HOST:
             continue;
 
         case '@':
-            // illegal byte sequence
             // userinfo already parsed
             if (userinfo) {
+                // illegal byte sequence
                 lua_pushinteger(L, cur);
                 lua_pushlstring(L, src + cur, 1);
                 return 3;
