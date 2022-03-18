@@ -2,8 +2,24 @@ local concat = table.concat
 local testcase = require('testcase')
 local parse = require('url.parse')
 
+function testcase.parse_empty_url()
+    -- test that parse empty-url
+    local u, cur, err = parse('')
+    assert.equal(cur, 0)
+    assert.is_nil(err)
+    assert.equal(u, {})
+end
+
+function testcase.parse_illegal_url()
+    -- test that parse empty-url
+    local u, cur, err = parse(string.char(0))
+    assert.equal(cur, 0)
+    assert.is_nil(err)
+    assert.equal(u, {})
+end
+
 function testcase.parse_full_url()
-    -- test that parse url
+    -- test that parse full url
     local segments = {
         'http://',
         'user:pswd@',
@@ -270,6 +286,42 @@ function testcase.parse_query()
                 'v4',
             },
         },
+    })
+end
+
+function testcase.parse_fragment()
+    -- test that parse fragment
+    local segments = {
+        '#foo?bar#baz%20/qux',
+    }
+    local s = concat(segments)
+    local u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        fragment = 'foo?bar#baz%20/qux',
+    })
+
+    -- test that parse empty fragment
+    u, cur, err = parse('#')
+    assert.equal(cur, 1)
+    assert.is_nil(err)
+    assert.equal(u, {
+        fragment = '',
+    })
+
+    -- test that return an error if contains a invalid percent-encoded string
+    u, cur, err = parse('#foo%1')
+    assert.equal(cur, 4)
+    assert.equal(err, '%')
+    assert.equal(u, {})
+
+    -- test that return an error if contains a invalid character
+    u, cur, err = parse('#fo|o')
+    assert.equal(cur, 3)
+    assert.equal(err, '|')
+    assert.equal(u, {
+        fragment = 'fo',
     })
 end
 
