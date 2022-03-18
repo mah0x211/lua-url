@@ -326,6 +326,26 @@ function testcase.parse_host()
         hostname = '127.0.0.1',
     })
 
+    -- test that parse host with empty-userinfo
+    s = 'http://@example.com'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        host = 'example.com',
+        hostname = 'example.com',
+    })
+
+    -- test that return an error if userinfo delimiter is declared more than once
+    s = 'http://@@example.com'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://@')
+    assert.equal(err, '@')
+    assert.equal(u, {
+        scheme = 'http',
+    })
+
     -- test that return an error if found invalid character
     s = 'http://example.com|'
     u, cur, err = parse(s)
@@ -377,6 +397,104 @@ function testcase.parse_host()
         password = 'pswd',
         user = 'user',
         userinfo = 'user:pswd',
+    })
+end
+
+function testcase.parse_port()
+    -- test that parse port
+    local s = 'http://example.com:80'
+    local u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        host = 'example.com:80',
+        hostname = 'example.com',
+        port = '80',
+    })
+
+    -- test that parse port without host
+    s = 'http://:80'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        host = ':80',
+        hostname = '',
+        port = '80',
+    })
+
+    -- test that parse port with query
+    s = 'http://:80?foo=bar'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        host = ':80',
+        hostname = '',
+        port = '80',
+        query = '?foo=bar',
+    })
+
+    -- test that parse port with fragment
+    s = 'http://:65535#foo=bar'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        host = ':65535',
+        hostname = '',
+        port = '65535',
+        fragment = 'foo=bar',
+    })
+
+    -- test that can be omit the port after ':'
+    for _, v in ipairs({
+        {
+            s = 'http://example.com:?foo=bar',
+            exp = {
+                scheme = 'http',
+                host = 'example.com',
+                hostname = 'example.com',
+                query = '?foo=bar',
+            },
+        },
+        {
+            s = 'http://:?foo=bar',
+            exp = {
+                scheme = 'http',
+                query = '?foo=bar',
+            },
+        },
+    }) do
+        u, cur, err = parse(v.s)
+        assert.equal(cur, #v.s)
+        assert.is_nil(err)
+        assert.equal(u, v.exp)
+    end
+
+    -- test that return an error if port greater than 65535
+    s = 'http://example.com:65536/foo/bar'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://example.com:6553')
+    assert.equal(err, '6')
+    assert.equal(u, {
+        scheme = 'http',
+    })
+
+    -- test that return an error if port contains non-digit character
+    s = 'http://user:pswd@example:80pswd:?foo'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://user:pswd@example:80')
+    assert.equal(err, 'p')
+    assert.equal(u, {
+        scheme = 'http',
+        userinfo = 'user:pswd',
+        user = 'user',
+        password = 'pswd',
     })
 end
 
