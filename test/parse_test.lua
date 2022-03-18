@@ -498,6 +498,51 @@ function testcase.parse_port()
     })
 end
 
+function testcase.parse_userinfo()
+    -- test that parse userinfo
+    local s = 'http://user:ps%77d@example.com/foo/bar'
+    local u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+
+    assert.equal(u, {
+        scheme = 'http',
+        host = 'example.com',
+        hostname = 'example.com',
+        userinfo = 'user:ps%77d',
+        user = 'user',
+        password = 'ps%77d',
+        path = '/foo/bar',
+    })
+
+    -- test that return error if contains invlida percent-encoded string
+    s = 'http://user:pswd%2@example.com'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://user:pswd')
+    assert.equal(err, '%')
+    assert.equal(u, {
+        scheme = 'http',
+    })
+
+    -- test that return error if userinfo is not terminated by '@'
+    s = 'http://user:psw?d@example.com'
+    u, cur, err = parse(s)
+    assert.equal(string.sub(s, 1, cur), 'http://user:psw')
+    assert.equal(err, '?')
+    assert.equal(u, {
+        scheme = 'http',
+    })
+
+    -- test that return error if userinfo is not terminated by '@'
+    s = 'http://user:pswd'
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.equal(err, '\0')
+    assert.equal(u, {
+        scheme = 'http',
+    })
+end
+
 function testcase.parse_pathname()
     -- test that parse path
     local s = '/foo/bar/baz%20qux'
