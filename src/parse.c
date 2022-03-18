@@ -853,6 +853,24 @@ PARSE_HOST:
         cur++;
         goto PARSE_PORT;
 
+    case '@':
+CHECK_USERINFO:
+        // userinfo already parsed
+        if (userinfo) {
+            // illegal byte sequence
+            lua_pushinteger(L, cur);
+            lua_pushlstring(L, src + cur, 1);
+            return 3;
+        }
+        // previous string is treated as userinfo
+        if (cur - head) {
+            lauxh_pushlstr2tbl(L, "userinfo", src + head, cur - head);
+            lauxh_pushlstr2tbl(L, "user", src + head, cur - head);
+        }
+        userinfo = cur;
+        cur++;
+        goto PARSE_HOST;
+
     default:
         // host must be started with ALPHA / DIGIT / '%' (percent-encoded)
         if (url[cur] != '%' && !isalnum(url[cur])) {
@@ -882,18 +900,7 @@ PARSE_HOST:
             continue;
 
         case '@':
-            // userinfo already parsed
-            if (userinfo) {
-                // illegal byte sequence
-                lua_pushinteger(L, cur);
-                lua_pushlstring(L, src + cur, 1);
-                return 3;
-            }
-            lauxh_pushlstr2tbl(L, "userinfo", src + head, cur - head);
-            lauxh_pushlstr2tbl(L, "user", src + head, cur - head);
-            userinfo = cur;
-            cur++;
-            goto PARSE_HOST;
+            goto CHECK_USERINFO;
 
         case ':':
             tail = cur;
@@ -977,9 +984,15 @@ PARSE_PORT:
 
 #define push_hostport()                                                        \
  do {                                                                          \
-  lauxh_pushlstr2tbl(L, "host", src + head, cur - head);                       \
-  lauxh_pushlstr2tbl(L, "hostname", src + head, tail - head);                  \
-  lauxh_pushlstr2tbl(L, "port", src + phead, cur - phead);                     \
+  if (cur - head > 2) {                                                        \
+   lauxh_pushlstr2tbl(L, "hostname", src + head, tail - head);                 \
+   if (cur - phead) {                                                          \
+    lauxh_pushlstr2tbl(L, "host", src + head, cur - head);                     \
+    lauxh_pushlstr2tbl(L, "port", src + phead, cur - phead);                   \
+   } else {                                                                    \
+    lauxh_pushlstr2tbl(L, "host", src + head, tail - head);                    \
+   }                                                                           \
+  }                                                                            \
  } while (0)
 
     for (; cur < urllen; cur++) {
@@ -988,9 +1001,9 @@ PARSE_PORT:
         // convert to integer
         case '0' ... '9':
             portnum = (portnum << 3) + (portnum << 1) + (c - '0');
-            // illegal byte sequence
             // invalid port range
             if (portnum > 0xFFFF) {
+                // illegal byte sequence
                 lua_pushinteger(L, cur);
                 lua_pushlstring(L, src + cur, 1);
                 return 3;
@@ -1012,14 +1025,14 @@ PARSE_PORT:
             goto PARSE_FRAGMENT;
 
         default:
-            // illegal byte sequence
             // userinfo already parsed or hostname ommited
             if (userinfo || omit_hostname) {
+                // illegal byte sequence
                 lua_pushinteger(L, cur);
                 lua_pushlstring(L, src + cur, 1);
                 return 3;
             }
-            // this byte sequences to use as username
+            // previsous string is treated as username
             goto PARSE_PASSWORD;
         }
     }
