@@ -275,6 +275,10 @@ static inline int parse_querystring(lua_State *L, unsigned char *url,
 
     for (; pos < urllen; pos++) {
         switch (URIC[url[pos]]) {
+        // illegal byte sequence
+        case 0:
+            // fallthrough
+
         // fragment
         case '#':
             // add query field
@@ -282,10 +286,6 @@ static inline int parse_querystring(lua_State *L, unsigned char *url,
                 lauxh_pushlstr2tbl(L, "query", (const char *)url + head,
                                    pos - head);
             }
-            // fallthrough
-
-        // illegal byte sequence
-        case 0:
             *cur = pos;
             return url[pos];
 
