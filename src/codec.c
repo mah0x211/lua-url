@@ -26,13 +26,7 @@
  *
  */
 
-#include <errno.h>
 #include <lauxhlib.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
 
 /*
     encodeURI   : 0-9 a-zA-Z !#$&'()*+,-./:;=?@_~
@@ -60,20 +54,31 @@
                   "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
 */
 static const unsigned char UNRESERVED_URI[256] = {
-    //  ctrl-code: 0-32
+    //  ctrl-code: 0-31
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0,
-    //  SP      "            %
-    0, '!', 0, '#', '$', 0, '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
-    //                                                              <       >
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', 0, '=', 0, '?',
-    '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
-    //                                                              [  \  ]  ^
-    'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 0, 0, 0, 0, '_',
-    //  `
-    0, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-    //                                                              {  |  }
-    'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 0, 0, 0, '~'};
+    0, 0, 0, 0, 0, 0,
+
+    // SP      "            %
+    0, 0, '!', 0, '#', '$', 0, '&', '\'', '(', ')', '*', '+', ',', '-', '.',
+    '/',
+
+    // digit
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+
+    //        <       >
+    ':', ';', 0, '=', 0, '?', '@',
+
+    // alpha-upper
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',
+    //   [  \  ]  ^       `
+    'Z', 0, 0, 0, 0, '_', 0,
+
+    // alpha-lower
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y',
+    //   {  |  }
+    'z', 0, 0, 0, '~'};
 
 /*
     RFC 2396    : 0-9 a-zA-Z !'()*-._~
@@ -97,32 +102,27 @@ static const unsigned char UNRESERVED_URI[256] = {
     digit       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 */
 static const unsigned char UNRESERVED_2396[256] = {
-    //  ctrl-code: 0-32
+    //  ctrl-code: 0-31
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0,
 
-    //  SP      "  #  $  %  &                       +  ,            /
-    0, '!', 0, 0, 0, 0, 0, '\'', '(', ')', '*', 0, 0, '-', '.', 0,
+    // SP      "  #  $  %  &                       +  ,            /
+    0, 0, '!', 0, 0, 0, 0, 0, '\'', '(', ')', '*', 0, 0, '-', '.', 0,
 
-    //  digit
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    // digit                                          :  ;  <  =  >  ?  @
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 0, 0, 0, 0, 0, 0, 0,
 
-    //  :  ;  <  =  >  ?  @
-    0, 0, 0, 0, 0, 0, 0,
-
-    //  alpha-upper
+    // alpha-upper
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
-    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',
+    //   [  \  ]  ^       `
+    'Z', 0, 0, 0, 0, '_', 0,
 
-    //  [  \  ]  ^       `
-    0, 0, 0, 0, '_', 0,
-
-    //  alpha-lower
+    // alpha-lower
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
-    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-
-    //  {  |  }
-    0, 0, 0, '~'};
+    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y',
+    //   {  |  }
+    'z', 0, 0, 0, '~'};
 
 /*
     RFC 3986    : 0-9 a-zA-Z -._~
@@ -142,32 +142,28 @@ static const unsigned char UNRESERVED_2396[256] = {
     digit       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 */
 static const unsigned char UNRESERVED_3986[256] = {
-    //  ctrl-code: 0-32
+    //  ctrl-code: 0-31
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0,
 
-    //  SP !  "  #  $  %  &  '  (  )  *  +  ,            /
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '-', '.', 0,
+    // SP !  "  #  $  %  &  '  (  )  *  +  ,            /
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '-', '.', 0,
 
-    //  digit
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    // digit
+    //                                                :  ;  <  =  >  ?  @
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 0, 0, 0, 0, 0, 0, 0,
 
-    //  :  ;  <  =  >  ?  @
-    0, 0, 0, 0, 0, 0, 0,
-
-    //  alpha-upper
+    // alpha-upper
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
-    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',
+    //   [  \  ]  ^       `
+    'Z', 0, 0, 0, 0, '_', 0,
 
-    //  [  \  ]  ^       `
-    0, 0, 0, 0, '_', 0,
-
-    //  alpha-lower
+    // alpha-lower
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
-    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-
-    //  {  |  }
-    0, 0, 0, '~'};
+    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y',
+    //   {  |  }
+    'z', 0, 0, 0, '~'};
 
 /*
     hex = 0-16
@@ -334,8 +330,7 @@ static int unicode_pt2utf8(luaL_Buffer *b, uint32_t cp)
     unicode code-point: u+0000 ... u+10ffff = 21bit
                  ascii: u+0000 ... u+007f   = 0-127 = 7bit
 */
-static int decode(lua_State *L, char *str, size_t slen,
-                  const unsigned char *tbl)
+static int decode(lua_State *L, char *str, size_t slen, int decode_uri)
 {
     luaL_Buffer b = {0};
 
@@ -389,11 +384,26 @@ static int decode(lua_State *L, char *str, size_t slen,
             */
             uint32_t hl = ((HEX2DEC[src[1]] - 1) << 4) | (HEX2DEC[src[2]] - 1);
 
-            if (!tbl[hl]) {
-                luaL_addchar(&b, hl);
-            } else {
-                luaL_addlstring(&b, (char *)src, 3);
+            // decodeURI did not decode the following characters: '#$&+,/:;=?@'
+            if (decode_uri) {
+                switch (hl) {
+                case '#':
+                case '$':
+                case '&':
+                case '+':
+                case ',':
+                case '/':
+                case ':':
+                case ';':
+                case '=':
+                case '?':
+                case '@':
+                    luaL_addlstring(&b, (char *)src, 3);
+                    i += 2;
+                    continue;
+                }
             }
+            luaL_addchar(&b, hl);
             i += 2;
             continue;
         }
@@ -433,13 +443,13 @@ static int decode(lua_State *L, char *str, size_t slen,
     return 0;
 }
 
-static int decode_lua(lua_State *L, const unsigned char *tbl)
+static int decode_lua(lua_State *L, int decode_uri)
 {
     size_t len      = 0;
     const char *src = lauxh_checklstring(L, 1, &len);
 
     lua_settop(L, 1);
-    if (decode(L, (char *)src, len, tbl) == 0) {
+    if (decode(L, (char *)src, len, decode_uri) == 0) {
         return 1;
     }
 
@@ -452,15 +462,15 @@ static int decode_lua(lua_State *L, const unsigned char *tbl)
 
 static int decodeuri_lua(lua_State *L)
 {
-    return decode_lua(L, UNRESERVED_URI);
+    return decode_lua(L, 1);
 }
 static int decode2396_lua(lua_State *L)
 {
-    return decode_lua(L, UNRESERVED_2396);
+    return decode_lua(L, 0);
 }
 static int decode3986_lua(lua_State *L)
 {
-    return decode_lua(L, UNRESERVED_3986);
+    return decode_lua(L, 0);
 }
 
 LUALIB_API int luaopen_url_codec(lua_State *L)
