@@ -64,24 +64,29 @@
 static const unsigned char URIC[256] = {
     //  ctrl-code: 0-32
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    //                       SP      "
-    0, 0, 0, 0, 0, 0, 0, 0, '!', 0, '#', '$', '%', '&', '\'', '(', ')', '*',
-    '+', ',', '-', '.',
+    0, 0, 0, 0, 0, 0,
+    // SP      "
+    0, 0, '!', 0, '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.',
     //  use query and fragment
-    '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    '/',
+    //  DIGIT
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
     //  use hostname
     ':',
-    //       <       >
+    //   <       >
     ';', 0, '=', 0,
     //  use query and fragment
-    '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-    'N',
-    //                                                              [  \  ]  ^
-    'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 0, 0, 0, 0, '_',
-    //  `
-    0, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-    //                                                              {  |  }
-    'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 0, 0, 0, '~'};
+    '?', '@',
+    // ALPHA
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',
+    //   [  \  ]  ^       `
+    'Z', 0, 0, 0, 0, '_', 0,
+    // ALPHA
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y',
+    //   {  |  }
+    'z', 0, 0, 0, '~'};
 
 static const unsigned char HEXDIGIT[256] = {
     0, 0, 0, 0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, 0,
@@ -277,7 +282,7 @@ static inline int parse_querystring(lua_State *L, unsigned char *url,
                 lauxh_pushlstr2tbl(L, "query", (const char *)url + head,
                                    pos - head);
             }
-            // paththrough
+            // fallthrough
 
         // illegal byte sequence
         case 0:
@@ -393,7 +398,7 @@ static inline int parse_queryparams_as_array(lua_State *L, unsigned char *url,
                                      pos - *cur, 2);
                 push_param();
             }
-            // paththrough
+            // fallthrough
 
         // illegal byte sequence
         case 0:
@@ -500,7 +505,7 @@ static inline int parse_queryparams(lua_State *L, unsigned char *url,
                                      pos - *cur, 2);
                 push_param();
             }
-            // paththrough
+            // fallthrough
 
         // illegal byte sequence
         case 0:
@@ -556,6 +561,14 @@ static inline int parse_queryparams(lua_State *L, unsigned char *url,
 #undef push_param
 }
 
+/**
+ * fragment      = *( pchar / "/" / "?" )
+ * pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
+ * unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+ * pct-encoded   = "%" HEXDIG HEXDIG
+ * sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+ *               / "*" / "+" / "," / ";" / "="
+ */
 static inline int parse_fragment(lua_State *L, unsigned char *url,
                                  size_t urllen, size_t *cur)
 {
@@ -567,7 +580,6 @@ static inline int parse_fragment(lua_State *L, unsigned char *url,
         switch (URIC[url[pos]]) {
         // illegal byte sequence
         case 0:
-        case '#':
             lauxh_pushlstr2tbl(L, "fragment", (const char *)url + head,
                                pos - head);
             *cur = pos;
@@ -581,7 +593,7 @@ static inline int parse_fragment(lua_State *L, unsigned char *url,
                 return '%';
             }
             // skip "%<HEX>"
-            cur += 2;
+            pos += 2;
         }
     }
 
@@ -718,7 +730,7 @@ PARSE_PATHNAME:
             }
             // skip "%<HEX>"
             cur += 2;
-            // paththrough
+            // fallthrough to disable chk_scheme
 
         // set chk_scheme to 0 if not scheme characters
         case '!':
@@ -1033,7 +1045,7 @@ PARSE_PASSWORD:
             }
             // skip "%<HEX>"
             cur += 2;
-            // paththrough
+            // fallthrough
         }
     }
 
