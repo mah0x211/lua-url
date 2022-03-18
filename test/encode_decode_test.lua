@@ -16,25 +16,25 @@ function testcase.encode_decode()
     ec = assert(url.encodeURI(TESTSTR))
     assert.not_equal(ec, TESTSTR)
     -- the encoded string can be decoded with the decode* funcs
-    assert.equal(TESTSTR, url.decodeURI(ec))
-    assert.equal(TESTSTR, url.decode2396(ec))
-    assert.equal(TESTSTR, url.decode3986(ec))
+    assert.equal(url.decodeURI(ec), TESTSTR)
+    assert.equal(url.decode2396(ec), TESTSTR)
+    assert.equal(url.decode3986(ec), TESTSTR)
 
     -- test that encode2396
     ec = assert(url.encode2396(TESTSTR))
     assert.not_equal(ec, TESTSTR)
     -- the encoded string can be decoded with the decode2396/3986 funcs
-    assert.not_equal(TESTSTR, url.decodeURI(ec))
-    assert.equal(TESTSTR, url.decode2396(ec))
-    assert.equal(TESTSTR, url.decode3986(ec))
+    assert.not_equal(url.decodeURI(ec), TESTSTR)
+    assert.equal(url.decode2396(ec), TESTSTR)
+    assert.equal(url.decode3986(ec), TESTSTR)
 
     -- test that encode3986
     ec = assert(url.encode3986(TESTSTR))
     assert.not_equal(ec, TESTSTR)
-    -- the encoded string can be decoded with the decode3986 func
-    assert.not_equal(TESTSTR, url.decodeURI(ec))
-    assert.not_equal(TESTSTR, url.decode2396(ec))
-    assert.equal(TESTSTR, url.decode3986(ec))
+    -- the encoded string can be decoded with the decode2396/3986 func
+    assert.not_equal(url.decodeURI(ec), TESTSTR)
+    assert.equal(url.decode2396(ec), TESTSTR)
+    assert.equal(url.decode3986(ec), TESTSTR)
 end
 
 function testcase.decode_unicode_point()
