@@ -14,42 +14,54 @@ luarocks install url
 ```
 
 
-## String Codecs
+## Encoding
 
-### Encoding
+```
+str = encodeURI( str )
+str = encode2396( str )
+str = encode3986( str )
+```
 
-returns the encoded string.
+encode a string to a percent-encoded string.
 
-- str, err = encodeURI( uri ): based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURI) for more details.
-- str, err = encode2396( uri ): based on RFC 2396.
-- str, err = encode3986( uri ): based on RFC 3986.
+- `encodeURI` encodes characters except `ALPHA_DIGIT (a-zA-Z0-9)` and `!#$&'()*+,./:;=?@_~-`.
+  - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURI) for more details.
+- `encode2396` encodes characters except `ALPHA_DIGIT` and `!'()*._~-`.
+  - based on RFC 2396.
+- `encode3986` encodes characters except `ALPHA_DIGIT` and `._~-`.
+  - based on RFC 3986.
+
 
 **Parameters**
 
-- `uri:string`: uri string.
+- `str:string`: a string.
 
 **Returns**
 
-1. `str:string`: encoded string.
-2. `err:number`: error number.
+- `str:string`: a encoded string.
 
 
-### Decoding
+## Decoding
 
-returns the decoded string.
+```
+str, err = decodeURI( str )
+str, err = decode( str )
+```
 
-- str, err = decodeURI( uri ): based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/decodeURI) for more details.
-- str, err = decode2396( uri ): based on RFC 2396.
-- str, err = decode3986( uri ): based on RFC 3986.
+decode a percent-encoded string.
+
+- `decodeURI` decodes percent-encoded characters except 
+  - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/decodeURI) for more details.
+- `decode` decodes all percent-encoded characters.
 
 **Parameters**
 
-- `uri:string`: encoded uri string.
+- `str:string`: encoded uri string.
 
 **Returns**
 
-1. `str:string`: decoded string on success, or nil on failure.
-2. `err:number`: error number.
+- `str:string`: decoded string on success, or nil on failure.
+- `err:integer`: position at where the illegal character was found.
 
 
 ## Parser
@@ -75,40 +87,116 @@ returns the table of parsed url.
 **Example**
 
 ```lua
-local url = require('url');
+local dump = require('dump')
+local url = require('url')
 
-local res, cur, err = url.parse('head http://user:pass@host.com:8080/p/a/t/h/?query=string#hash tail', true, 5)
-
+local res, cur, err = url.parse(
+                          'head http://user:pass@host.com:8080/p/a/t/h/?query=string&query=value#hash tail',
+                          true, 5, true)
+print(dump({
+    res = res,
+    cur = cur,
+    err = err,
+}))
 --[[
-cur = 62,
-err = " ",
-res = {
-    fragment = "hash",
-    host = "host.com:8080",
-    hostname = "host.com",
-    password = "pass",
-    path = "/p/a/t/h/",
-    port = "8080",
-    query = "?query=string",
-    queryParams = {
-        query = "string"
-    },
-    scheme = "http",
-    user = "user",
-    userinfo = "user:pass"
+{
+    cur = 74,
+    err = " ",
+    res = {
+        fragment = "hash",
+        host = "host.com:8080",
+        hostname = "host.com",
+        password = "pass",
+        path = "/p/a/t/h/",
+        port = "8080",
+        query = "?query=string&query=value",
+        queryParams = {
+            query = {
+                [1] = "string",
+                [2] = "value"
+            }
+        },
+        scheme = "http",
+        user = "user",
+        userinfo = "user:pass"
+    }
 }
 --]]
 
+res, cur, err = url.parse(
+                    'head http://user:pass@host.com:8080/p/a/t/h/?query=string&query=value#hash tail',
+                    true, 5)
+print(dump({
+    res = res,
+    cur = cur,
+    err = err,
+}))
+--[[
+{
+    cur = 74,
+    err = " ",
+    res = {
+        fragment = "hash",
+        host = "host.com:8080",
+        hostname = "host.com",
+        password = "pass",
+        path = "/p/a/t/h/",
+        port = "8080",
+        query = "?query=string&query=value",
+        queryParams = {
+            query = "value"
+        },
+        scheme = "http",
+        user = "user",
+        userinfo = "user:pass"
+    }
+}
+--]]
 
--- parse query
-res, cur, err = url.parse('head ?query=string#hash tail', false, 5);
+res, cur, err = url.parse(
+                    'head http://user:pass@host.com:8080/p/a/t/h/?query=string&query=value#hash tail',
+                    false, 5)
+print(dump({
+    res = res,
+    cur = cur,
+    err = err,
+}))
 
 --[[
-cur = 23,
-err = " ",
-res = {
-    fragment = "hash",
-    query = "?query=string"
+{
+    cur = 74,
+    err = " ",
+    res = {
+        fragment = "hash",
+        host = "host.com:8080",
+        hostname = "host.com",
+        password = "pass",
+        path = "/p/a/t/h/",
+        port = "8080",
+        query = "?query=string&query=value",
+        scheme = "http",
+        user = "user",
+        userinfo = "user:pass"
+    }
+}
+--]]
+
+-- parse query
+res, cur, err = url.parse('head ?query=string&query=value#hash tail', false, 5)
+print(dump({
+    res = res,
+    cur = cur,
+    err = err,
+}))
+
+--[[
+{
+    cur = 35,
+    err = " ",
+    res = {
+        fragment = "hash",
+        query = "?query=string&query=value"
+    }
 }
 --]]
 ```

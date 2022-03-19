@@ -1,7 +1,11 @@
 local testcase = require('testcase')
-local url = require('url');
+local url = require('url')
 
-local TESTSTR = [[ !"#$%&\'()*+,-./\n
+local ALPHA_LO = 'abcdefghijklmnopqrstuvwxyz'
+local ALPHA_UP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+local DIGIT = '0123456789'
+local ALPHADIGIT = ALPHA_LO .. ALPHA_UP .. DIGIT
+local TESTSTR = [[ !"#$%&\'()*+,-./
 0123456789
 :;<=>?@
 ABCDEFGHIJKLMNOPQRSTUVWXYZ
@@ -9,32 +13,76 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ
 abcdefghijklmnopqrstuvwxyz
 {|}~]]
 
-function testcase.encode_decode()
-    local ec
-
+function testcase.encodeURI()
     -- test that encodeURL
-    ec = assert(url.encodeURI(TESTSTR))
-    assert.not_equal(ec, TESTSTR)
-    -- the encoded string can be decoded with the decode* funcs
-    assert.equal(url.decodeURI(ec), TESTSTR)
-    assert.equal(url.decode2396(ec), TESTSTR)
-    assert.equal(url.decode3986(ec), TESTSTR)
+    local s = url.encodeURI(TESTSTR)
+    s = string.gsub(s, '%%[a-fA-F0-9][a-fA-F0-9]', '')
 
+    local mark = "!#$&'()*+,./:;=?@_~-"
+    local unescaped = ALPHADIGIT .. mark
+    assert.equal(#s, #unescaped)
+    assert.re_match(s, '[' .. unescaped .. ']')
+    assert.not_re_match(s, '[^' .. unescaped .. ']')
+end
+
+function testcase.encode2396()
     -- test that encode2396
-    ec = assert(url.encode2396(TESTSTR))
-    assert.not_equal(ec, TESTSTR)
-    -- the encoded string can be decoded with the decode2396/3986 funcs
-    assert.not_equal(url.decodeURI(ec), TESTSTR)
-    assert.equal(url.decode2396(ec), TESTSTR)
-    assert.equal(url.decode3986(ec), TESTSTR)
+    local s = url.encode2396(TESTSTR)
+    s = string.gsub(s, '%%[a-fA-F0-9][a-fA-F0-9]', '')
 
+    local mark = "!'()*._~-"
+    local unescaped = ALPHADIGIT .. mark
+    assert.equal(#s, #unescaped)
+    assert.re_match(s, '[' .. unescaped .. ']')
+    assert.not_re_match(s, '[^' .. unescaped .. ']')
+end
+
+function testcase.encode3986()
     -- test that encode3986
-    ec = assert(url.encode3986(TESTSTR))
-    assert.not_equal(ec, TESTSTR)
-    -- the encoded string can be decoded with the decode2396/3986 func
-    assert.not_equal(url.decodeURI(ec), TESTSTR)
-    assert.equal(url.decode2396(ec), TESTSTR)
-    assert.equal(url.decode3986(ec), TESTSTR)
+    local s = url.encode3986(TESTSTR)
+    s = string.gsub(s, '%%[a-fA-F0-9][a-fA-F0-9]', '')
+
+    local mark = '._~-'
+    local unescaped = ALPHADIGIT .. mark
+    assert.equal(#s, #unescaped)
+    assert.re_match(s, '[' .. unescaped .. ']')
+    assert.not_re_match(s, '[^' .. unescaped .. ']')
+end
+
+function testcase.decodeURI()
+    local escaped = ''
+    for i = 1, 0x7E do
+        escaped = escaped .. string.format('%%%02X', i)
+    end
+
+    -- test that decodeURL did not decode '#$&+,/:;=?@' characters
+    local decoded = assert(url.decodeURI(escaped))
+    local s = ''
+    for c in string.gmatch(decoded, '%%[a-fA-F0-9][a-fA-F0-9]') do
+        local n = tonumber(string.sub(c, 2), 16)
+        s = s .. string.char(n)
+    end
+    local mark = '#$&+,/:;=?@'
+    local undecoded = mark
+    assert.equal(#s, #undecoded)
+    assert.re_match(s, '[' .. undecoded .. ']')
+    assert.not_re_match(s, '[^' .. undecoded .. ']')
+end
+
+function testcase.decode()
+    local escaped = ''
+    for i = 1, 0x7E do
+        escaped = escaped .. string.format('%%%02X', i)
+    end
+
+    -- test that decode all escaped characters
+    local decoded = assert(url.decode(escaped))
+    local s = ''
+    for c in string.gmatch(decoded, '%%[a-fA-F0-9][a-fA-F0-9]') do
+        local n = tonumber(string.sub(c, 2), 16)
+        s = s .. string.char(n)
+    end
+    assert.equal(#s, 0)
 end
 
 function testcase.decode_unicode_point()
@@ -44,7 +92,8 @@ function testcase.decode_unicode_point()
                  'A è あ 𪚲 A è あ 𪚲')
 
     -- test that returns err if invalid code point
-    local s, err = url.decodeURI('%4')
+    local cp = '%20%u4'
+    local s, err = url.decodeURI(cp)
     assert.is_nil(s)
-    assert.equal(err, 22)
+    assert.equal(string.sub(cp, 1, err), '%20%')
 end

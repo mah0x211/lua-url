@@ -39,7 +39,7 @@
     escaped     = "%" hex hex
 
     hex         = digit | "A" | "B" | "C" | "D" | "E" | "F" |
-                            "a" | "b" | "c" | "d" | "e" | "f"
+                          "a" | "b" | "c" | "d" | "e" | "f"
 
     digit       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
 
@@ -344,8 +344,9 @@ static int decode(lua_State *L, char *str, size_t slen, int decode_uri)
         }
         // percent-encoding(%hex) must have more than 2 byte strings after '%'.
         else if (slen < i + 2) {
-            errno = EINVAL;
-            return -1;
+            lua_pushnil(L);
+            lua_pushinteger(L, i + 1);
+            return 2;
         }
         /*
             hex(8bit) to decimal
@@ -434,54 +435,41 @@ static int decode(lua_State *L, char *str, size_t slen, int decode_uri)
                 }
             }
         }
-        errno = EINVAL;
-        return -1;
+        lua_pushnil(L);
+        lua_pushinteger(L, i + 1);
+        return 2;
     }
 
     luaL_pushresult(&b);
-
-    return 0;
+    return 1;
 }
 
-static int decode_lua(lua_State *L, int decode_uri)
+static int decodeuri_lua(lua_State *L)
 {
     size_t len      = 0;
     const char *src = lauxh_checklstring(L, 1, &len);
 
     lua_settop(L, 1);
-    if (decode(L, (char *)src, len, decode_uri) == 0) {
-        return 1;
-    }
-
-    // got error
-    lua_pushnil(L);
-    lua_pushinteger(L, errno);
-
-    return 2;
+    return decode(L, (char *)src, len, 1);
 }
 
-static int decodeuri_lua(lua_State *L)
+static int decode_lua(lua_State *L)
 {
-    return decode_lua(L, 1);
-}
-static int decode2396_lua(lua_State *L)
-{
-    return decode_lua(L, 0);
-}
-static int decode3986_lua(lua_State *L)
-{
-    return decode_lua(L, 0);
+    size_t len      = 0;
+    const char *src = lauxh_checklstring(L, 1, &len);
+
+    lua_settop(L, 1);
+    return decode(L, (char *)src, len, 0);
 }
 
 LUALIB_API int luaopen_url_codec(lua_State *L)
 {
     struct luaL_Reg method[] = {
         {"encodeURI",  encodeuri_lua },
-        {"decodeURI",  decodeuri_lua },
         {"encode2396", encode2396_lua},
-        {"decode2396", decode2396_lua},
         {"encode3986", encode3986_lua},
-        {"decode3986", decode3986_lua},
+        {"decodeURI",  decodeuri_lua },
+        {"decode",     decode_lua    },
         {NULL,         NULL          }
     };
     int i;
