@@ -50,7 +50,7 @@ str, err = decode( str )
 
 decode a percent-encoded string.
 
-- `decodeURI` decodes percent-encoded characters except 
+- `decodeURI` decodes percent-encoded characters except `#$&+,/:;=?@`.
   - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/decodeURI) for more details.
 - `decode` decodes all percent-encoded characters.
 
