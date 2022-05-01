@@ -66,7 +66,7 @@ decode a percent-encoded string.
 
 ## Parser
 
-### res, cur, err = parse( url [, parseQuery [, init [, param_array]]] )
+### res, cur, err = parse( url [, parseQuery [, init [, is_querystring]]] )
 
 returns the table of parsed url.
 
@@ -75,7 +75,7 @@ returns the table of parsed url.
 - `url:string`: url string.
 - `parseQuery:boolean`: parse query-string if `true`.
 - `init:integer`: where to cursor start position. (default `0`)
-- `param_array:boolean`: store the query parameters as an array.. (default `false`)
+- `is_querystring:boolean`: `url` is query string. (default `false`)
 
 **Returns**
 

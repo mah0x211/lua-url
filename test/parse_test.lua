@@ -20,7 +20,7 @@ end
 
 function testcase.parse_full_url()
     -- test that parse full url
-    local segments = {
+    local s = concat({
         'http://',
         'user:pswd@',
         'host.com',
@@ -28,8 +28,7 @@ function testcase.parse_full_url()
         '/p/a/t/h/',
         '?q1=v1-1&q1=v1-1&q2=v2',
         '#hash',
-    }
-    local s = concat(segments)
+    })
     local u, cur, err = parse(s)
     assert.equal(cur, #s)
     assert.is_nil(err)
@@ -40,6 +39,32 @@ function testcase.parse_full_url()
         password = 'pswd',
         host = 'host.com:8080',
         hostname = 'host.com',
+        port = '8080',
+        path = '/p/a/t/h/',
+        query = '?q1=v1-1&q1=v1-1&q2=v2',
+        fragment = 'hash',
+    })
+
+    -- test that parse full ipv4 url
+    s = concat({
+        'http://',
+        'user:pswd@',
+        '127.0.0.1',
+        ':8080',
+        '/p/a/t/h/',
+        '?q1=v1-1&q1=v1-1&q2=v2',
+        '#hash',
+    })
+    u, cur, err = parse(s)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {
+        scheme = 'http',
+        userinfo = 'user:pswd',
+        user = 'user',
+        password = 'pswd',
+        host = '127.0.0.1:8080',
+        hostname = '127.0.0.1',
         port = '8080',
         path = '/p/a/t/h/',
         query = '?q1=v1-1&q1=v1-1&q2=v2',
@@ -614,20 +639,36 @@ function testcase.parse_query_string()
     u, cur, err = parse(s)
     assert.equal(string.sub(s, 1, cur), '?q1=v1-1&')
     assert.equal(err, '%')
-    assert.equal(u, {})
+    assert.equal(u, {
+        query = '?q1=v1-1&',
+    })
 end
 
 function testcase.parse_query_params()
     -- test that parse query
-    local s = '?q1=v1-1&q1=v1-1%20&q2=v2'
+    local s = '?&key&q1=v1-1&&q1=v1-1%20&=&q2=v2&q+%233=v3+val%23%5a%7A'
     local u, cur, err = parse(s, true)
     assert.equal(cur, #s)
     assert.is_nil(err)
     assert.equal(u, {
         query = s,
         queryParams = {
-            q1 = 'v1-1%20',
-            q2 = 'v2',
+            [''] = {
+                '',
+            },
+            key = {
+                '',
+            },
+            q1 = {
+                'v1-1',
+                'v1-1 ',
+            },
+            q2 = {
+                'v2',
+            },
+            ['q #3'] = {
+                'v3 val#Zz',
+            },
         },
     })
 
@@ -639,8 +680,12 @@ function testcase.parse_query_params()
     assert.equal(u, {
         query = '?q1=v1-1&q2=v2',
         queryParams = {
-            q1 = 'v1-1',
-            q2 = 'v2',
+            q1 = {
+                'v1-1',
+            },
+            q2 = {
+                'v2',
+            },
         },
     })
 
@@ -652,15 +697,19 @@ function testcase.parse_query_params()
     assert.equal(u, {
         query = '?q1=v1-1&q2=',
         queryParams = {
-            q1 = 'v1-1',
-            q2 = '',
+            q1 = {
+                'v1-1',
+            },
+            q2 = {
+                '',
+            },
         },
     })
 end
 
-function testcase.parse_query_params_as_array()
+function testcase.parse_as_query()
     -- test that parse query
-    local s = '?q1=v1-1&q1=v1-1%20&q2=v2'
+    local s = 'q1=v1-1&q1=v1-1%20&q2=v2'
     local u, cur, err = parse(s, true, nil, true)
     assert.equal(cur, #s)
     assert.is_nil(err)
@@ -669,7 +718,7 @@ function testcase.parse_query_params_as_array()
         queryParams = {
             q1 = {
                 'v1-1',
-                'v1-1%20',
+                'v1-1 ',
             },
             q2 = {
                 'v2',
@@ -678,12 +727,12 @@ function testcase.parse_query_params_as_array()
     })
 
     -- test that return an error if contains a invalid character
-    s = '?q1=v1-1&q2=v2|'
+    s = 'q1=v1-1&q2=v2|'
     u, cur, err = parse(s, true, nil, true)
-    assert.equal(string.sub(s, 1, cur), '?q1=v1-1&q2=v2')
+    assert.equal(string.sub(s, 1, cur), 'q1=v1-1&q2=v2')
     assert.equal(err, '|')
     assert.equal(u, {
-        query = '?q1=v1-1&q2=v2',
+        query = 'q1=v1-1&q2=v2',
         queryParams = {
             q1 = {
                 'v1-1',
@@ -695,13 +744,13 @@ function testcase.parse_query_params_as_array()
     })
 
     -- test that return an error if contains a invalid percent-encoded string
-    s = '?q1=v1-1&q2=v2-1&q2=%2v2-2'
+    s = 'q1=v1-1&q2=v2-1&q2=%2v2-2'
     u, cur, err = parse(s, true, nil, true)
-    assert.equal(string.sub(s, 1, cur), '?q1=v1-1&q2=v2-1&q2=')
-    assert.equal(cur, 20)
+    assert.equal(string.sub(s, 1, cur), 'q1=v1-1&q2=v2-1&q2=')
+    assert.equal(cur, 19)
     assert.equal(err, '%')
     assert.equal(u, {
-        query = '?q1=v1-1&q2=v2-1&q2=',
+        query = 'q1=v1-1&q2=v2-1&q2=',
         queryParams = {
             q1 = {
                 'v1-1',
@@ -709,57 +758,6 @@ function testcase.parse_query_params_as_array()
             q2 = {
                 'v2-1',
                 '',
-            },
-        },
-    })
-end
-
-function testcase.parse_query()
-    -- test that parse query
-    local s = '?q1=v1-1&q1=v1-1&q2=v2'
-    local u, cur, err = parse(s)
-    assert.equal(cur, #s)
-    assert.is_nil(err)
-    assert.equal(u, {
-        query = s,
-    })
-
-    -- test that parse query params
-    s = '?q1=v1-1&q1=v1-1&q2=v2&q3=&q4='
-    u, cur, err = parse(s, true)
-    assert.equal(cur, #s)
-    assert.is_nil(err)
-    assert.equal(u, {
-        query = s,
-        queryParams = {
-            q1 = 'v1-1',
-            q2 = 'v2',
-            q3 = '',
-            q4 = '',
-        },
-    })
-
-    -- test that parse query params as array
-    s = '?q1=v1-1&q1=v1-2&q2=v2&=v3&q3&q3=v4&=v5&q2='
-    u, cur, err = parse(s, true, nil, true)
-    assert.equal(cur, #s)
-    assert.is_nil(err)
-    assert.equal(u, {
-        query = s,
-        queryParams = {
-            'v3',
-            'v5',
-            q1 = {
-                'v1-1',
-                'v1-2',
-            },
-            q2 = {
-                'v2',
-                '',
-            },
-            q3 = {
-                '',
-                'v4',
             },
         },
     })
