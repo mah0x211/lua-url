@@ -66,7 +66,7 @@ decode a percent-encoded string.
 
 ## Parser
 
-### res, cur, err = parse( url [, parseQuery [, init [, param_array]]] )
+### res, cur, err = parse( url [, parseQuery [, init [, is_querystring]]] )
 
 returns the table of parsed url.
 
@@ -75,7 +75,7 @@ returns the table of parsed url.
 - `url:string`: url string.
 - `parseQuery:boolean`: parse query-string if `true`.
 - `init:integer`: where to cursor start position. (default `0`)
-- `param_array:boolean`: store the query parameters as an array.. (default `false`)
+- `is_querystring:boolean`: `url` is query string. (default `false`)
 
 **Returns**
 
@@ -92,7 +92,7 @@ local url = require('url')
 
 local res, cur, err = url.parse(
                           'head http://user:pass@host.com:8080/p/a/t/h/?query=string&query=value#hash tail',
-                          true, 5, true)
+                          true, 5)
 print(dump({
     res = res,
     cur = cur,
@@ -125,43 +125,12 @@ print(dump({
 
 res, cur, err = url.parse(
                     'head http://user:pass@host.com:8080/p/a/t/h/?query=string&query=value#hash tail',
-                    true, 5)
-print(dump({
-    res = res,
-    cur = cur,
-    err = err,
-}))
---[[
-{
-    cur = 74,
-    err = " ",
-    res = {
-        fragment = "hash",
-        host = "host.com:8080",
-        hostname = "host.com",
-        password = "pass",
-        path = "/p/a/t/h/",
-        port = "8080",
-        query = "?query=string&query=value",
-        queryParams = {
-            query = "value"
-        },
-        scheme = "http",
-        user = "user",
-        userinfo = "user:pass"
-    }
-}
---]]
-
-res, cur, err = url.parse(
-                    'head http://user:pass@host.com:8080/p/a/t/h/?query=string&query=value#hash tail',
                     false, 5)
 print(dump({
     res = res,
     cur = cur,
     err = err,
 }))
-
 --[[
 {
     cur = 74,
@@ -182,20 +151,26 @@ print(dump({
 --]]
 
 -- parse query
-res, cur, err = url.parse('head ?query=string&query=value#hash tail', false, 5)
+res, cur, err = url.parse('head query=string&query=value#hash tail', true, 5,
+                          true)
 print(dump({
     res = res,
     cur = cur,
     err = err,
 }))
-
 --[[
 {
-    cur = 35,
+    cur = 34,
     err = " ",
     res = {
         fragment = "hash",
-        query = "?query=string&query=value"
+        query = "query=string&query=value",
+        queryParams = {
+            query = {
+                [1] = "string",
+                [2] = "value"
+            }
+        }
     }
 }
 --]]
