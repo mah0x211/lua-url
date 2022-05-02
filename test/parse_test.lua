@@ -672,6 +672,13 @@ function testcase.parse_query_params()
         },
     })
 
+    -- test that parse query
+    s = '?'
+    u, cur, err = parse(s, true)
+    assert.equal(cur, #s)
+    assert.is_nil(err)
+    assert.equal(u, {})
+
     -- test that return an error if contains a invalid character
     s = '?q1=v1-1&q2=v2|'
     u, cur, err = parse(s, true)
@@ -710,7 +717,7 @@ end
 function testcase.parse_as_query()
     -- test that parse query
     local s = 'q1=v1-1&q1=v1-1%20&q2=v2'
-    local u, cur, err = parse(s, true, nil, true)
+    local u, cur, err = parse(s, true, nil, true, nil)
     assert.equal(cur, #s)
     assert.is_nil(err)
     assert.equal(u, {

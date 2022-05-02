@@ -564,6 +564,7 @@ static int parse_lua(lua_State *L)
 
     // check arguments
     if (argc > 4) {
+        argc = 4;
         lua_settop(L, 4);
     }
     switch (argc) {
