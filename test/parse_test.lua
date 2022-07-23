@@ -652,7 +652,7 @@ function testcase.parse_query_params()
     assert.is_nil(err)
     assert.equal(u, {
         query = s,
-        queryParams = {
+        query_params = {
             [''] = {
                 '',
             },
@@ -686,7 +686,7 @@ function testcase.parse_query_params()
     assert.equal(err, '|')
     assert.equal(u, {
         query = '?q1=v1-1&q2=v2',
-        queryParams = {
+        query_params = {
             q1 = {
                 'v1-1',
             },
@@ -703,7 +703,7 @@ function testcase.parse_query_params()
     assert.equal(err, '%')
     assert.equal(u, {
         query = '?q1=v1-1&q2=',
-        queryParams = {
+        query_params = {
             q1 = {
                 'v1-1',
             },
@@ -722,7 +722,7 @@ function testcase.parse_as_query()
     assert.is_nil(err)
     assert.equal(u, {
         query = s,
-        queryParams = {
+        query_params = {
             q1 = {
                 'v1-1',
                 'v1-1 ',
@@ -740,7 +740,7 @@ function testcase.parse_as_query()
     assert.equal(err, '|')
     assert.equal(u, {
         query = 'q1=v1-1&q2=v2',
-        queryParams = {
+        query_params = {
             q1 = {
                 'v1-1',
             },
@@ -758,7 +758,7 @@ function testcase.parse_as_query()
     assert.equal(err, '%')
     assert.equal(u, {
         query = 'q1=v1-1&q2=v2-1&q2=',
-        queryParams = {
+        query_params = {
             q1 = {
                 'v1-1',
             },

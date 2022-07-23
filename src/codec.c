@@ -220,7 +220,7 @@ static int encode_lua(lua_State *L, const unsigned char *tbl)
     return 1;
 }
 
-static int encodeuri_lua(lua_State *L)
+static int encode_uri_lua(lua_State *L)
 {
     return encode_lua(L, UNRESERVED_URI);
 }
@@ -444,7 +444,7 @@ static int decode(lua_State *L, char *str, size_t slen, int decode_uri)
     return 1;
 }
 
-static int decodeuri_lua(lua_State *L)
+static int decode_uri_lua(lua_State *L)
 {
     size_t len      = 0;
     const char *src = lauxh_checklstring(L, 1, &len);
@@ -465,10 +465,10 @@ static int decode_lua(lua_State *L)
 LUALIB_API int luaopen_url_codec(lua_State *L)
 {
     struct luaL_Reg method[] = {
-        {"encodeURI",  encodeuri_lua },
+        {"encode_uri", encode_uri_lua},
         {"encode2396", encode2396_lua},
         {"encode3986", encode3986_lua},
-        {"decodeURI",  decodeuri_lua },
+        {"decode_uri", decode_uri_lua},
         {"decode",     decode_lua    },
         {NULL,         NULL          }
     };

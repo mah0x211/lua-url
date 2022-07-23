@@ -13,9 +13,9 @@ ABCDEFGHIJKLMNOPQRSTUVWXYZ
 abcdefghijklmnopqrstuvwxyz
 {|}~]]
 
-function testcase.encodeURI()
+function testcase.encode_uri()
     -- test that encodeURL
-    local s = url.encodeURI(TESTSTR)
+    local s = url.encode_uri(TESTSTR)
     s = string.gsub(s, '%%[a-fA-F0-9][a-fA-F0-9]', '')
 
     local mark = "!#$&'()*+,./:;=?@_~-"
@@ -49,14 +49,14 @@ function testcase.encode3986()
     assert.not_re_match(s, '[^' .. unescaped .. ']')
 end
 
-function testcase.decodeURI()
+function testcase.decode_uri()
     local escaped = ''
     for i = 1, 0x7E do
         escaped = escaped .. string.format('%%%02X', i)
     end
 
     -- test that decodeURL did not decode '#$&+,/:;=?@' characters
-    local decoded = assert(url.decodeURI(escaped))
+    local decoded = assert(url.decode_uri(escaped))
     local s = ''
     for c in string.gmatch(decoded, '%%[a-fA-F0-9][a-fA-F0-9]') do
         local n = tonumber(string.sub(c, 2), 16)
@@ -87,13 +87,13 @@ end
 
 function testcase.decode_unicode_point()
     -- test that decode unicode point
-    assert.equal(url.decodeURI(
+    assert.equal(url.decode_uri(
                      '%u0041 %u00E8 %u3042 %uD869%uDEB2 %u0041 %u00E8 %u3042 %uD869%uDEB2'),
                  'A è あ 𪚲 A è あ 𪚲')
 
     -- test that returns err if invalid code point
     local cp = '%20%u4'
-    local s, err = url.decodeURI(cp)
+    local s, err = url.decode_uri(cp)
     assert.is_nil(s)
     assert.equal(string.sub(cp, 1, err), '%20%')
 end
