@@ -22,10 +22,10 @@
 local codec = require('url.codec')
 
 return {
-    encodeURI = codec.encodeURI,
+    encode_uri = codec.encode_uri,
     encode2396 = codec.encode2396,
     encode3986 = codec.encode3986,
-    decodeURI = codec.decodeURI,
+    decode_uri = codec.decode_uri,
     decode = codec.decode,
     parse = require('url.parse'),
 }

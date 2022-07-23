@@ -17,14 +17,14 @@ luarocks install url
 ## Encoding
 
 ```
-str = encodeURI( str )
+str = encode_uri( str )
 str = encode2396( str )
 str = encode3986( str )
 ```
 
 encode a string to a percent-encoded string.
 
-- `encodeURI` encodes characters except `ALPHA_DIGIT (a-zA-Z0-9)` and `!#$&'()*+,./:;=?@_~-`.
+- `encode_uri` encodes characters except `ALPHA_DIGIT (a-zA-Z0-9)` and `!#$&'()*+,./:;=?@_~-`.
   - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURI) for more details.
 - `encode2396` encodes characters except `ALPHA_DIGIT` and `!'()*._~-`.
   - based on RFC 2396.
@@ -44,13 +44,13 @@ encode a string to a percent-encoded string.
 ## Decoding
 
 ```
-str, err = decodeURI( str )
+str, err = decode_uri( str )
 str, err = decode( str )
 ```
 
 decode a percent-encoded string.
 
-- `decodeURI` decodes percent-encoded characters except `#$&+,/:;=?@`.
+- `decode_uri` decodes percent-encoded characters except `#$&+,/:;=?@`.
   - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/decodeURI) for more details.
 - `decode` decodes all percent-encoded characters.
 
@@ -66,22 +66,22 @@ decode a percent-encoded string.
 
 ## Parser
 
-### res, cur, err = parse( url [, parseQuery [, init [, is_querystring]]] )
+### res, cur, err = parse( url [, parse_query [, init [, is_querystring]]] )
 
 returns the table of parsed url.
 
 **Parameters**
 
 - `url:string`: url string.
-- `parseQuery:boolean`: parse query-string if `true`.
+- `parse_query:boolean`: parse query-string if `true`.
 - `init:integer`: where to cursor start position. (default `0`)
 - `is_querystring:boolean`: `url` is query string. (default `false`)
 
 **Returns**
 
-1. `res:table`: url info table.
-2. `cur:number`: cursor stop position.
-3. `err:string`: error character.
+- `res:table`: url info table.
+- `cur:number`: cursor stop position.
+- `err:string`: error character.
 
 
 **Example**
@@ -110,7 +110,7 @@ print(dump({
         path = "/p/a/t/h/",
         port = "8080",
         query = "?query=string&query=value",
-        queryParams = {
+        query_params = {
             query = {
                 [1] = "string",
                 [2] = "value"
@@ -165,7 +165,7 @@ print(dump({
     res = {
         fragment = "hash",
         query = "query=string&query=value",
-        queryParams = {
+        query_params = {
             query = {
                 [1] = "string",
                 [2] = "value"

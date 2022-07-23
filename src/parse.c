@@ -402,7 +402,7 @@ static inline int parse_query(lua_State *L, unsigned char *url, size_t urllen,
 
     if (parse_params) {
         query_param_init(&p, L, (const char *)url, pos);
-        lua_pushstring(L, "queryParams");
+        lua_pushstring(L, "query_params");
         lua_newtable(L);
     }
 
