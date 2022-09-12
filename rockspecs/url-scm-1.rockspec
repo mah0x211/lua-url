@@ -14,7 +14,7 @@ dependencies = {
     "lauxhlib >= 0.3.1",
 }
 build = {
-    type = 'make',
+    type = "make",
     build_variables = {
         LIB_EXTENSION = "$(LIB_EXTENSION)",
         CFLAGS = "$(CFLAGS)",
