@@ -27,6 +27,7 @@ return {
     encode2396 = codec.encode2396,
     encode3986 = codec.encode3986,
     decode_uri = codec.decode_uri,
+    decode_form = codec.decode_form,
     decode = codec.decode,
     parse = require('url.parse'),
 }

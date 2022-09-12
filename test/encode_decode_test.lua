@@ -81,6 +81,25 @@ function testcase.decode_uri()
     assert.not_re_match(s, '[^' .. undecoded .. ']')
 end
 
+function testcase.decode_form()
+    local escaped = ''
+    for i = 1, 0x7E do
+        escaped = escaped .. string.format('%%%02X', i)
+    end
+
+    -- test that decode all escaped characters
+    local decoded = assert(url.decode_form(escaped))
+    local s = ''
+    for c in string.gmatch(decoded, '%%[a-fA-F0-9][a-fA-F0-9]') do
+        local n = tonumber(string.sub(c, 2), 16)
+        s = s .. string.char(n)
+    end
+    assert.equal(#s, 0)
+
+    -- test that decode_form is decode '+' to ' '
+    assert.equal(url.decode_form('h+ello+++world!'), 'h ello   world!')
+end
+
 function testcase.decode()
     local escaped = ''
     for i = 1, 0x7E do

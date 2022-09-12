@@ -48,6 +48,7 @@ encode a string to a percent-encoded string.
 
 ```
 str, err = decode_uri( str )
+str, err = decode_form( str )
 str, err = decode( str )
 ```
 
@@ -55,6 +56,7 @@ decode a percent-encoded string.
 
 - `decode_uri` decodes percent-encoded characters except `#$&+,/:;=?@`.
   - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/decodeURI) for more details.
+- `decode_form` decodes all percent-encoded characters, and replaces any `+` characters with spaces ` `.
 - `decode` decodes all percent-encoded characters.
 
 **Parameters**
@@ -63,7 +65,7 @@ decode a percent-encoded string.
 
 **Returns**
 
-- `str:string`: decoded string on success, or nil on failure.
+- `str:string`: decoded string on success, or `nil` on failure.
 - `err:integer`: position at where the illegal character was found.
 
 

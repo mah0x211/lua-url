@@ -397,12 +397,18 @@ static int unicode_pt2utf8(luaL_Buffer *b, uint32_t cp)
     return 0;
 }
 
+typedef enum {
+    DECODE_ALL  = 0,
+    DECODE_URI  = 1,
+    DECODE_FORM = 2
+} decode_type_e;
+
 /*
                    hex: 0xf                 = 0-15  = 4bit
     unicode code-point: u+0000 ... u+10ffff = 21bit
                  ascii: u+0000 ... u+007f   = 0-127 = 7bit
 */
-static int decode(lua_State *L, char *str, size_t slen, int decode_uri)
+static int decode(lua_State *L, char *str, size_t slen, decode_type_e dectype)
 {
     luaL_Buffer b = {0};
 
@@ -411,7 +417,11 @@ static int decode(lua_State *L, char *str, size_t slen, int decode_uri)
     for (size_t i = 0; i < slen; i++) {
         unsigned char *src = (unsigned char *)str + i;
         if (*src != '%') {
-            luaL_addchar(&b, *src);
+            if (dectype == DECODE_FORM && *src == '+') {
+                luaL_addchar(&b, ' ');
+            } else {
+                luaL_addchar(&b, *src);
+            }
             continue;
         }
         // percent-encoding(%hex) must have more than 2 byte strings after '%'.
@@ -458,7 +468,7 @@ static int decode(lua_State *L, char *str, size_t slen, int decode_uri)
             uint32_t hl = ((HEX2DEC[src[1]] - 1) << 4) | (HEX2DEC[src[2]] - 1);
 
             // decodeURI did not decode the following characters: '#$&+,/:;=?@'
-            if (decode_uri) {
+            if (dectype == DECODE_URI) {
                 switch (hl) {
                 case '#':
                 case '$':
@@ -522,7 +532,16 @@ static int decode_uri_lua(lua_State *L)
     const char *src = lauxh_checklstring(L, 1, &len);
 
     lua_settop(L, 1);
-    return decode(L, (char *)src, len, 1);
+    return decode(L, (char *)src, len, DECODE_URI);
+}
+
+static int decode_form_lua(lua_State *L)
+{
+    size_t len      = 0;
+    const char *src = lauxh_checklstring(L, 1, &len);
+
+    lua_settop(L, 1);
+    return decode(L, (char *)src, len, DECODE_FORM);
 }
 
 static int decode_lua(lua_State *L)
@@ -531,7 +550,7 @@ static int decode_lua(lua_State *L)
     const char *src = lauxh_checklstring(L, 1, &len);
 
     lua_settop(L, 1);
-    return decode(L, (char *)src, len, 0);
+    return decode(L, (char *)src, len, DECODE_ALL);
 }
 
 LUALIB_API int luaopen_url_codec(lua_State *L)
@@ -542,6 +561,7 @@ LUALIB_API int luaopen_url_codec(lua_State *L)
         {"encode2396",  encode2396_lua },
         {"encode3986",  encode3986_lua },
         {"decode_uri",  decode_uri_lua },
+        {"decode_form", decode_form_lua},
         {"decode",      decode_lua     },
         {NULL,          NULL           }
     };
