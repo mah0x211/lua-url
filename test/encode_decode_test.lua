@@ -25,6 +25,18 @@ function testcase.encode_uri()
     assert.not_re_match(s, '[^' .. unescaped .. ']')
 end
 
+function testcase.encode_form()
+    -- test that encodeURL
+    local s = url.encode_form(TESTSTR)
+    s = string.gsub(s, '%%[a-fA-F0-9][a-fA-F0-9]', '')
+
+    local mark = "+*-._~"
+    local unescaped = ALPHADIGIT .. mark
+    assert.equal(#s, #unescaped)
+    assert.re_match(s, '[' .. unescaped .. ']')
+    assert.not_re_match(s, '[^' .. unescaped .. ']')
+end
+
 function testcase.encode2396()
     -- test that encode2396
     local s = url.encode2396(TESTSTR)

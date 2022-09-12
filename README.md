@@ -18,6 +18,7 @@ luarocks install url
 
 ```
 str = encode_uri( str )
+str = encode_form( str )
 str = encode2396( str )
 str = encode3986( str )
 ```
@@ -26,6 +27,8 @@ encode a string to a percent-encoded string.
 
 - `encode_uri` encodes characters except `ALPHA_DIGIT (a-zA-Z0-9)` and `!#$&'()*+,./:;=?@_~-`.
   - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURI) for more details.
+- `encode_form` encodes characters except `ALPHA_DIGIT` and `*-._~`.
+  - based on https://url.spec.whatwg.org/#application-x-www-form-urlencoded-percent-encode-set
 - `encode2396` encodes characters except `ALPHA_DIGIT` and `!'()*._~-`.
   - based on RFC 2396.
 - `encode3986` encodes characters except `ALPHA_DIGIT` and `._~-`.

@@ -81,6 +81,72 @@ static const unsigned char UNRESERVED_URI[256] = {
     'z', 0, 0, 0, '~'};
 
 /*
+    encode_form  : 0-9 a-zA-Z *-._~
+    https://url.spec.whatwg.org/#application-x-www-form-urlencoded-percent-encode-set
+
+    application/x-www-form-urlencoded = percent-encode
+                                        except: alpha | digit | "*" | "-" |
+                                                "." | "_"
+
+    parcent-encode              = component-percent-encode |
+                                  "!" | "'" | "(" | ")" | "~"
+
+    component-percent-encode    = userinfo-percent-encode |
+                                  "$" | "%" | "&" | "+" | ","
+
+    userinfo-percent-encode     = path-percent-encode |
+                                  "/" | ":" | ";" | "=" | "@" | "[" | "\" |
+                                  "]" | "^" | "|"
+
+    path-percent-encode         = query-percent-encode |
+                                  "?" | "`" | "{" | "}"
+
+    query-percent-encode        = c0-control-percent-encode |
+                                  code-points-gt-7e-encode |
+                                  " " | '"' | "#" | "<" | ">"
+
+    c0-control-percent-encode   = 0x0 to 0x1F
+
+    code-points-gt-7e-encode    = greater than "~"
+
+
+    unreserved  = alpha | digit | mark
+
+    alpha       = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" |
+                  "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" |
+                  "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
+                  "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" |
+                  "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" |
+                  "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+
+    digit       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+    mark        = *-._~
+*/
+static const unsigned char UNRESERVED_FORM[256] = {
+    //  ctrl-code: 0-31
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0,
+
+    // SP   !  "  #  $  %  &  \  (  )       +  ,            /
+    0, '+', 0, 0, 0, 0, 0, 0, 0, 0, 0, '*', 0, 0, '-', '.', 0,
+
+    // digit                                          :  ;  <  =  >  ?  @
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 0, 0, 0, 0, 0, 0, 0,
+
+    // alpha-upper
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+    'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y',
+    //   [  \  ]  ^       `
+    'Z', 0, 0, 0, 0, '_', 0,
+
+    // alpha-lower
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+    'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y',
+    //   {  |  }
+    'z', 0, 0, 0, '~'};
+
+/*
     RFC 2396    : 0-9 a-zA-Z !'()*-._~
 
     unreserved  = alphanum | mark
@@ -204,13 +270,15 @@ static int encode_lua(lua_State *L, const unsigned char *tbl)
     lua_settop(L, 1);
     luaL_buffinit(L, &b);
     for (size_t i = 0; i < len; i++) {
-        if (tbl[*src]) {
-            luaL_addchar(&b, *src);
+        unsigned char c          = *src;
+        unsigned char unreserved = tbl[c];
+        if (unreserved) {
+            luaL_addchar(&b, unreserved);
         } else {
             // *src >> 4 = *src / 16
-            dest[1] = DEC2HEX[*src >> 4];
+            dest[1] = DEC2HEX[c >> 4];
             // *src & 0xf = *src % 16
-            dest[2] = DEC2HEX[*src & 0xf];
+            dest[2] = DEC2HEX[c & 0xf];
             luaL_addlstring(&b, (char *)dest, 3);
         }
         src++;
@@ -223,6 +291,10 @@ static int encode_lua(lua_State *L, const unsigned char *tbl)
 static int encode_uri_lua(lua_State *L)
 {
     return encode_lua(L, UNRESERVED_URI);
+}
+static int encode_form_lua(lua_State *L)
+{
+    return encode_lua(L, UNRESERVED_FORM);
 }
 static int encode2396_lua(lua_State *L)
 {
@@ -465,12 +537,13 @@ static int decode_lua(lua_State *L)
 LUALIB_API int luaopen_url_codec(lua_State *L)
 {
     struct luaL_Reg method[] = {
-        {"encode_uri", encode_uri_lua},
-        {"encode2396", encode2396_lua},
-        {"encode3986", encode3986_lua},
-        {"decode_uri", decode_uri_lua},
-        {"decode",     decode_lua    },
-        {NULL,         NULL          }
+        {"encode_uri",  encode_uri_lua },
+        {"encode_form", encode_form_lua},
+        {"encode2396",  encode2396_lua },
+        {"encode3986",  encode3986_lua },
+        {"decode_uri",  decode_uri_lua },
+        {"decode",      decode_lua     },
+        {NULL,          NULL           }
     };
     int i;
 
