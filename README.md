@@ -18,6 +18,7 @@ luarocks install url
 
 ```
 str = encode_uri( str )
+str = encode_form( str )
 str = encode2396( str )
 str = encode3986( str )
 ```
@@ -26,6 +27,8 @@ encode a string to a percent-encoded string.
 
 - `encode_uri` encodes characters except `ALPHA_DIGIT (a-zA-Z0-9)` and `!#$&'()*+,./:;=?@_~-`.
   - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURI) for more details.
+- `encode_form` encodes characters except `ALPHA_DIGIT` and `*-._~`.
+  - based on https://url.spec.whatwg.org/#application-x-www-form-urlencoded-percent-encode-set
 - `encode2396` encodes characters except `ALPHA_DIGIT` and `!'()*._~-`.
   - based on RFC 2396.
 - `encode3986` encodes characters except `ALPHA_DIGIT` and `._~-`.
@@ -45,6 +48,7 @@ encode a string to a percent-encoded string.
 
 ```
 str, err = decode_uri( str )
+str, err = decode_form( str )
 str, err = decode( str )
 ```
 
@@ -52,6 +56,7 @@ decode a percent-encoded string.
 
 - `decode_uri` decodes percent-encoded characters except `#$&+,/:;=?@`.
   - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/decodeURI) for more details.
+- `decode_form` decodes all percent-encoded characters, and replaces any `+` characters with spaces ` `.
 - `decode` decodes all percent-encoded characters.
 
 **Parameters**
@@ -60,7 +65,7 @@ decode a percent-encoded string.
 
 **Returns**
 
-- `str:string`: decoded string on success, or nil on failure.
+- `str:string`: decoded string on success, or `nil` on failure.
 - `err:integer`: position at where the illegal character was found.
 
 

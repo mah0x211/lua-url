@@ -25,6 +25,18 @@ function testcase.encode_uri()
     assert.not_re_match(s, '[^' .. unescaped .. ']')
 end
 
+function testcase.encode_form()
+    -- test that encodeURL
+    local s = url.encode_form(TESTSTR)
+    s = string.gsub(s, '%%[a-fA-F0-9][a-fA-F0-9]', '')
+
+    local mark = "+*-._~"
+    local unescaped = ALPHADIGIT .. mark
+    assert.equal(#s, #unescaped)
+    assert.re_match(s, '[' .. unescaped .. ']')
+    assert.not_re_match(s, '[^' .. unescaped .. ']')
+end
+
 function testcase.encode2396()
     -- test that encode2396
     local s = url.encode2396(TESTSTR)
@@ -67,6 +79,25 @@ function testcase.decode_uri()
     assert.equal(#s, #undecoded)
     assert.re_match(s, '[' .. undecoded .. ']')
     assert.not_re_match(s, '[^' .. undecoded .. ']')
+end
+
+function testcase.decode_form()
+    local escaped = ''
+    for i = 1, 0x7E do
+        escaped = escaped .. string.format('%%%02X', i)
+    end
+
+    -- test that decode all escaped characters
+    local decoded = assert(url.decode_form(escaped))
+    local s = ''
+    for c in string.gmatch(decoded, '%%[a-fA-F0-9][a-fA-F0-9]') do
+        local n = tonumber(string.sub(c, 2), 16)
+        s = s .. string.char(n)
+    end
+    assert.equal(#s, 0)
+
+    -- test that decode_form is decode '+' to ' '
+    assert.equal(url.decode_form('h+ello+++world!'), 'h ello   world!')
 end
 
 function testcase.decode()
