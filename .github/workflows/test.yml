@@ -5,16 +5,12 @@ on: [push]
 jobs:
   luacheck:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/mah0x211/lua-ci:latest
     steps:
     -
       name: Checkout
       uses: actions/checkout@v2
-    -
-      name: Setup Lua
-      uses: leafo/gh-actions-lua@v8.0.0
-    -
-      name: Setup Luarocks
-      uses: leafo/gh-actions-luarocks@v4
     -
       name: Install Tools
       run: luarocks install luacheck
@@ -24,40 +20,36 @@ jobs:
         luacheck .
 
   test:
+    needs: luacheck
+    permissions:
+      id-token: write
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/mah0x211/lua-ci:latest
     strategy:
       matrix:
         lua-version:
-          - "5.1"
-          - "5.2"
-          - "5.3"
-          - "5.4"
-          - "luajit-2.0.5"
-          - "luajit-openresty"
+          - "5.1.:latest"
+          - "5.2.:latest"
+          - "5.3.:latest"
+          - "5.4.:latest"
+          - "lj-v2.1:latest"
     steps:
+    -
+      name: Switch Lua Version
+      run: |
+        lenv -g use ${{ matrix.lua-version }}
+        lua -v || true
     -
       name: Checkout
       uses: actions/checkout@v2
-      with:
-        submodules: 'true'
-    -
-      name: Setup Lua ${{ matrix.lua-version }}
-      uses: leafo/gh-actions-lua@v8.0.0
-      with:
-        luaVersion: ${{ matrix.lua-version }}
-    -
-      name: Setup Luarocks
-      uses: leafo/gh-actions-luarocks@v4
-      with:
-        luaRocksVersion: 3.8.0
     -
       name: Install
       run: |
-        luarocks make URL_COVERAGE=1
+        URL_COVERAGE=1 luarocks make rockspecs/url-scm-1.rockspec
     -
       name: Install Tools
       run: |
-        sudo apt install lcov -y
         luarocks install testcase
     -
       name: Run Test
@@ -69,8 +61,10 @@ jobs:
         sh ./covgen.sh
     -
       name: Upload c coverage to Codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v5
       with:
+        use_oidc: true
+        disable_search: true
         files: ./coverage/lcov.info
         flags: unittests
 
