@@ -26,7 +26,10 @@
  *
  */
 
-#include <lauxhlib.h>
+// depend
+#include "lauxhlib.h"
+// lua
+#include <lauxlib.h>
 
 /*
     encodeURI   : 0-9 a-zA-Z !#$&'()*+,-./:;=?@_~

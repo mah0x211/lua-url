@@ -25,13 +25,14 @@
  *
  */
 
+// depend
+#include "lauxhlib.h"
+// lua
+#include <lauxlib.h>
+// system
 #include <ctype.h>
 #include <errno.h>
-#include <lauxhlib.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#include <stddef.h>
 
 /**
  *  RFC 3986
@@ -774,10 +775,10 @@ CHECK_USERINFO:
     }
 
 #define push_host()                                                            \
- do {                                                                          \
-  lauxh_pushlstr2tbl(L, "host", src + head, cur - head);                       \
-  lauxh_pushlstr2tbl(L, "hostname", src + head, cur - head);                   \
- } while (0)
+    do {                                                                       \
+        lauxh_pushlstr2tbl(L, "host", src + head, cur - head);                 \
+        lauxh_pushlstr2tbl(L, "hostname", src + head, cur - head);             \
+    } while (0)
 
     for (; cur < urllen; cur++) {
         switch (URIC[url[cur]]) {
@@ -875,17 +876,17 @@ PARSE_PORT:
     portnum = 0;
 
 #define push_hostport()                                                        \
- do {                                                                          \
-  if (cur - head > 2) {                                                        \
-   lauxh_pushlstr2tbl(L, "hostname", src + head, tail - head);                 \
-   if (cur - phead) {                                                          \
-    lauxh_pushlstr2tbl(L, "host", src + head, cur - head);                     \
-    lauxh_pushlstr2tbl(L, "port", src + phead, cur - phead);                   \
-   } else {                                                                    \
-    lauxh_pushlstr2tbl(L, "host", src + head, tail - head);                    \
-   }                                                                           \
-  }                                                                            \
- } while (0)
+    do {                                                                       \
+        if (cur - head > 2) {                                                  \
+            lauxh_pushlstr2tbl(L, "hostname", src + head, tail - head);        \
+            if (cur - phead) {                                                 \
+                lauxh_pushlstr2tbl(L, "host", src + head, cur - head);         \
+                lauxh_pushlstr2tbl(L, "port", src + phead, cur - phead);       \
+            } else {                                                           \
+                lauxh_pushlstr2tbl(L, "host", src + head, tail - head);        \
+            }                                                                  \
+        }                                                                      \
+    } while (0)
 
     for (; cur < urllen; cur++) {
         c = url[cur];
