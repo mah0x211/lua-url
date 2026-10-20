@@ -54,6 +54,10 @@ str, err = decode( str )
 
 decode a percent-encoded string.
 
+Only `%HH` escapes with two hexadecimal digits are accepted. Nonstandard `%uXXXX` escapes and malformed percent sequences return `nil` and the 1-based position of the offending `%`.
+
+Decoding operates on bytes, including NUL, and does not validate UTF-8.
+
 - `decode_uri` decodes percent-encoded characters except `#$&+,/:;=?@`.
   - based on ECMAScript. please see [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/decodeURI) for more details.
 - `decode_form` decodes all percent-encoded characters, and replaces any `+` characters with spaces ` `.
