@@ -116,15 +116,112 @@ function testcase.decode()
     assert.equal(#s, 0)
 end
 
-function testcase.decode_unicode_point()
-    -- test that decode unicode point
-    assert.equal(url.decode_uri(
-                     '%u0041 %u00E8 %u3042 %uD869%uDEB2 %u0041 %u00E8 %u3042 %uD869%uDEB2'),
-                 'A è あ 𪚲 A è あ 𪚲')
+function testcase.decode_all_byte_values()
+    local upper = {}
+    local lower = {}
+    local bytes = {}
+    for i = 0, 255 do
+        upper[#upper + 1] = string.format('%%%02X', i)
+        lower[#lower + 1] = string.format('%%%02x', i)
+        bytes[#bytes + 1] = string.char(i)
+    end
 
-    -- test that returns err if invalid code point
-    local cp = '%20%u4'
-    local s, err = url.decode_uri(cp)
-    assert.is_nil(s)
-    assert.equal(string.sub(cp, 1, err), '%20%')
+    local expected = table.concat(bytes)
+    for _, name in ipairs({ 'decode', 'decode_form' }) do
+        assert.equal(url[name](table.concat(upper)), expected)
+        assert.equal(url[name](table.concat(lower)), expected)
+    end
+end
+
+function testcase.decode_utf8_percent_bytes()
+    local escaped = '%41%20%C3%A8%20%E3%81%82%20%F0%AA%9A%B2'
+    for _, name in ipairs({ 'decode_uri', 'decode_form', 'decode' }) do
+        assert.equal(url[name](escaped), 'A è あ 𪚲')
+    end
+end
+
+function testcase.decode_uri_binary_bytes()
+    assert.equal(url.decode_uri('%00%7F%80%FF'), '\0\127\128\255')
+end
+
+function testcase.decode_uri_preserves_reserved_escapes()
+    local escaped = '%23%24%26%2B%2b%2C%2c%2F%2f%3A%3a%3B%3b%3D%3d%3F%3f%40'
+    assert.equal(url.decode_uri(escaped), escaped)
+end
+
+function testcase.decode_preserves_percent_encoded_text()
+    for _, name in ipairs({ 'decode_uri', 'decode_form', 'decode' }) do
+        assert.equal(url[name]('%25u0041'), '%u0041')
+        assert.equal(url[name]('%2541'), '%41')
+        assert.equal(url[name]('%41tail'), 'Atail')
+        assert.equal(url[name]('raw\0bytes'), 'raw\0bytes')
+    end
+end
+
+function testcase.decode_form_literal_and_encoded_plus()
+    assert.equal(url.decode_form('a+b%2Bc'), 'a b+c')
+    assert.equal(url.decode('a+b%2Bc'), 'a+b+c')
+    assert.equal(url.decode_uri('a+b%2Bc'), 'a+b%2Bc')
+end
+
+function testcase.decode_empty_string()
+    for _, name in ipairs({ 'decode_uri', 'decode_form', 'decode' }) do
+        local s, err = url[name]('')
+        assert.equal(s, '')
+        assert.is_nil(err)
+    end
+end
+
+function testcase.decode_rejects_percent_u()
+    local cases = {
+        { '%u0041', 1 },
+        { '%u0000', 1 },
+        { '%u00E8', 1 },
+        { '%u3042', 1 },
+        { '%uD869%uDEB2', 1 },
+        { '%uD800', 1 },
+        { '%uDC00', 1 },
+        { '%uFFFF', 1 },
+        { '%U0041', 1 },
+        { '%u', 1 },
+        { '%u0', 1 },
+        { '%u00', 1 },
+        { '%u000', 1 },
+        { '%uZZZZ', 1 },
+        { 'prefix%u0041', 7 },
+        { '%41%u0042', 4 },
+    }
+    for _, name in ipairs({ 'decode_uri', 'decode_form', 'decode' }) do
+        for _, case in ipairs(cases) do
+            local s, err = url[name](case[1])
+            assert.is_nil(s)
+            assert.equal(err, case[2])
+        end
+    end
+end
+
+function testcase.decode_rejects_malformed_percent_escapes()
+    local cases = {
+        { '%', 1 },
+        { '%0', 1 },
+        { '%GG', 1 },
+        { '%G0', 1 },
+        { '%0G', 1 },
+        { '%aZ', 1 },
+        { '%%41', 1 },
+        { '%\0', 1 },
+        { '%0\0', 1 },
+        { '%\2550', 1 },
+        { '%0\255', 1 },
+        { 'abc%', 4 },
+        { '%41%0', 4 },
+        { 'a\0b%G0', 4 },
+    }
+    for _, name in ipairs({ 'decode_uri', 'decode_form', 'decode' }) do
+        for _, case in ipairs(cases) do
+            local s, err = url[name](case[1])
+            assert.is_nil(s)
+            assert.equal(err, case[2])
+        end
+    end
 end
