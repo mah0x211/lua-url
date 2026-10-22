@@ -83,7 +83,7 @@ returns the table of parsed url.
 
 - `url:string`: url string.
 - `parse_query:boolean`: parse query-string if `true`.
-- `init:integer`: where to cursor start position. (default `0`)
+- `init:integer`: zero-based cursor start position, from `0` through `#url` (default `0`). Values beyond the input length raise an argument error.
 - `is_querystring:boolean`: `url` is query string. (default `false`)
 
 **Returns**
