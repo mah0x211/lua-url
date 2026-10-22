@@ -143,152 +143,107 @@ static inline void unescape(lua_State *L, const char *str, size_t len)
  *              / "2" %x30-34 DIGIT     ; 200-249
  *              / "25" %x30-35          ; 250-255
  */
+/* Return success separately from the delimiter, so an invalid address ending
+ * at ']' cannot be mistaken for a valid IP literal. */
 static int parse_ipv4(unsigned char *url, size_t urllen, size_t *cur)
 {
-    size_t pos  = *cur;
-    size_t head = pos;
-    int nseg    = 0;
-    int dec     = -1;
-
-    for (; pos < urllen; pos++) {
-        switch (url[pos]) {
-        case '0' ... '9':
-            if (pos - head < 4) {
-                // convert to integer
-                if (dec == -1) {
-                    dec = url[pos] - '0';
-                } else {
-                    dec = (dec << 3) + (dec << 1) + (url[pos] - '0');
-                }
-
-                if (dec <= 0xFF) {
-                    continue;
-                }
+    size_t pos = *cur;
+    for (int part = 0; part < 4; part++) {
+        size_t head        = pos;
+        unsigned int value = 0;
+        while (pos < urllen && url[pos] >= '0' && url[pos] <= '9') {
+            value = value * 10 + url[pos] - '0';
+            if (pos - head >= 3 || value > 255 ||
+                (pos > head && url[head] == '0')) {
+                goto INVALID;
             }
-            break;
-
-        case '.':
-            if (pos - head && nseg < 3) {
-                dec  = -1;
-                head = pos + 1;
-                nseg++;
-                continue;
-            }
-            break;
-
-        default:
-            // done
-            if (nseg == 3 && dec != -1) {
-                *cur = pos;
-                return url[pos];
-            }
+            pos++;
         }
-        break;
+        if (pos == head) {
+            goto INVALID;
+        }
+        if (part < 3) {
+            if (pos == urllen || url[pos] != '.') {
+                goto INVALID;
+            }
+            pos++;
+        }
     }
-
-    // illegal byte sequence
     *cur = pos;
-    return url[head];
+    return pos < urllen && url[pos] == ']';
+
+INVALID:
+    *cur = pos;
+    return 0;
 }
 
-/**
- * IPv6address  =                            6( h16 ":" ) ls32
- *              /                       "::" 5( h16 ":" ) ls32
- *              / [               h16 ] "::" 4( h16 ":" ) ls32
- *              / [ *1( h16 ":" ) h16 ] "::" 3( h16 ":" ) ls32
- *              / [ *2( h16 ":" ) h16 ] "::" 2( h16 ":" ) ls32
- *              / [ *3( h16 ":" ) h16 ] "::"    h16 ":"   ls32
- *              / [ *4( h16 ":" ) h16 ] "::"              ls32
- *              / [ *5( h16 ":" ) h16 ] "::"              h16
- *              / [ *6( h16 ":" ) h16 ] "::"
- *
- * ls32         = ( h16 ":" h16 ) / IPv4address
- * h16         = 1*4HEXDIG
- */
+/* An IPv6 address has eight h16 groups. A single '::' can replace one or
+ * more groups, and a final IPv4 address occupies two groups. */
 static int parse_ipv6(unsigned char *url, size_t urllen, size_t *cur)
 {
-    size_t pos  = *cur;
-    size_t head = 0;
-    int zerogrp = 0;
-    int nbit    = 0;
+    size_t pos     = *cur;
+    int groups     = 0;
+    int compressed = 0;
 
-    if (url[pos] == ':') {
-        zerogrp = url[pos + 1] == ':';
-        // not zero group
-        if (!zerogrp) {
-            return url[pos + 1];
+    if (pos < urllen && url[pos] == ':') {
+        pos++;
+        if (pos == urllen || url[pos] != ':') {
+            goto INVALID;
         }
-        pos += 2;
-        nbit += 16;
+        compressed = 1;
+        pos++;
     }
 
-    for (; pos < urllen; pos++) {
-        switch (url[pos]) {
-        // found finish
-        case ']':
-            *cur = pos;
-            return ']';
-
-        // zero-group
-        case ':':
-            // illegal byte sequence
-            // zero group already defined
-            if (zerogrp) {
-                *cur = pos;
-                return url[pos];
+    while (pos < urllen && url[pos] != ']') {
+        size_t head = pos;
+        int digits  = 0;
+        while (pos < urllen && isxdigit(url[pos])) {
+            if (++digits > 4) {
+                goto INVALID;
             }
-            nbit += 16;
-            zerogrp = 1;
-            continue;
-
-        // h16
-        case '0' ... '9':
-        case 'A' ... 'F':
-        case 'a' ... 'f':
-            if (nbit < 128) {
-                nbit += 16;
-                head = pos;
-                if (isxdigit(url[++pos]) && isxdigit(url[++pos]) &&
-                    isxdigit(url[++pos])) {
-                    pos++;
-                }
-                switch (url[pos]) {
-                case ':':
-                    if (url[pos + 1] != ']') {
-                        continue;
-                    }
-                    break;
-
-                // found finish
-                case ']':
-                    if (nbit == 128) {
-                        *cur = pos;
-                        return ']';
-                    }
-                    break;
-
-                // embed ipv4
-                case '.':
-                    // if nbit is less than or equal to 112, can be
-                    // embedded ipv4 address (32 bit).
-                    //
-                    //  max nbit = 128 bit(IPv6) - 32 bit(IPv4)
-                    //           = 96
-                    if (nbit <= 112) {
-                        *cur = head;
-                        return parse_ipv4(url, urllen, cur);
-                    }
-                    break;
-                }
-            }
+            pos++;
         }
-
-        break;
+        if (!digits) {
+            goto INVALID;
+        }
+        if (pos < urllen && url[pos] == '.') {
+            if (groups > 6) {
+                goto INVALID;
+            }
+            pos = head;
+            if (!parse_ipv4(url, urllen, &pos)) {
+                goto INVALID;
+            }
+            groups += 2;
+            break;
+        }
+        if (++groups > 8) {
+            goto INVALID;
+        }
+        if (pos == urllen || url[pos] == ']') {
+            break;
+        }
+        if (url[pos] != ':') {
+            goto INVALID;
+        }
+        pos++;
+        if (pos < urllen && url[pos] == ':') {
+            if (compressed) {
+                goto INVALID;
+            }
+            compressed = 1;
+            pos++;
+        } else if (pos == urllen || url[pos] == ']') {
+            goto INVALID;
+        }
     }
-
-    // illegal byte sequence
     *cur = pos;
-    return url[pos];
+    return pos < urllen && url[pos] == ']' &&
+           (compressed ? groups < 8 : groups == 8);
+
+INVALID:
+    *cur = pos;
+    return 0;
 }
 
 typedef struct {
@@ -433,7 +388,7 @@ static inline int parse_query(lua_State *L, unsigned char *url, size_t urllen,
 
         // key-value separator
         case '=':
-            if (parse_params) {
+            if (parse_params && !p.key) {
                 query_param_set_keytail(&p, pos, is_encoded);
                 is_encoded = 0;
             }
@@ -559,6 +514,7 @@ static int parse_lua(lua_State *L)
     size_t userinfo    = 0;
     size_t portnum     = 0;
     int chk_scheme     = 1;
+    int scheme_has_dot = 0;
     int omit_hostname  = 0;
     int parse_params   = 0;
     int is_querystring = 0;
@@ -580,6 +536,7 @@ static int parse_lua(lua_State *L)
         parse_params = lauxh_optboolean(L, 2, 0);
     }
 
+    luaL_argcheck(L, cur <= urllen, 3, "initial cursor exceeds input length");
     lua_settop(L, 1);
     lua_newtable(L);
     if (!urllen) {
@@ -647,7 +604,6 @@ PARSE_PATHNAME:
         // 0x24-2A = & ' ( ) *
         case '&' ... '*':
         case ',':
-        case '.':
         case '/':
         case ';':
         case '=':
@@ -657,12 +613,20 @@ PARSE_PATHNAME:
             chk_scheme = 0;
             break;
 
+        case '.':
+            scheme_has_dot = 1;
+            break;
+
         case ':':
-            // use as scheme separator
-            if (chk_scheme) {
+            // Preserve schemeless host:port paths while allowing dotted
+            // schemes.
+            if (chk_scheme &&
+                (!scheme_has_dot || (cur + 2 < urllen && url[cur + 1] == '/' &&
+                                     url[cur + 2] == '/'))) {
                 chk_scheme = 0;
                 goto PARSE_SCHEME;
             }
+            chk_scheme = 0;
             break;
         }
     }
@@ -708,6 +672,12 @@ PARSE_FRAGMENT:
     }
 
 PARSE_SCHEME:
+    if (!((url[head] >= 'A' && url[head] <= 'Z') ||
+          (url[head] >= 'a' && url[head] <= 'z'))) {
+        lua_pushinteger(L, head);
+        lua_pushlstring(L, src + head, 1);
+        return 3;
+    }
     // must be double-slash
     if ((cur + 2) >= urllen || url[cur + 1] != '/' || url[cur + 2] != '/') {
         lua_pushinteger(L, cur);
@@ -765,8 +735,8 @@ CHECK_USERINFO:
         goto PARSE_HOST;
 
     default:
-        // host must be started with ALPHA / DIGIT / '%' (percent-encoded)
-        if (url[cur] != '%' && !isalnum(url[cur])) {
+        // reg-name allows unreserved characters, sub-delimiters and %HH.
+        if (!URIC[url[cur]] || url[cur] == '?' || url[cur] == '#') {
             // illegal byte sequence
             lua_pushinteger(L, cur);
             lua_pushlstring(L, src + cur, 1);
@@ -834,10 +804,13 @@ PARSE_IPV6:
     // parse ipv6
     head = cur;
     cur++;
-    switch (parse_ipv6(url, urllen, &cur)) {
-    // found delemiter
-    case ']':
+    if (parse_ipv6(url, urllen, &cur)) {
         cur++;
+        if (cur == urllen) {
+            push_host();
+            lua_pushinteger(L, cur);
+            return 2;
+        }
         switch (url[cur]) {
         case ':':
             tail = cur;
@@ -852,6 +825,11 @@ PARSE_IPV6:
             push_host();
             goto PARSE_QUERY;
 
+        case '#':
+            push_host();
+            cur++;
+            goto PARSE_FRAGMENT;
+
         // illegal byte sequence
         default:
             push_host();
@@ -859,14 +837,10 @@ PARSE_IPV6:
             lua_pushlstring(L, src + cur, 1);
             return 3;
         }
-        break;
-
-    // illegal byte sequence
-    default:
-        lua_pushinteger(L, cur);
-        lua_pushlstring(L, src + cur, 1);
-        return 3;
     }
+    lua_pushinteger(L, cur);
+    lua_pushlstring(L, src + cur, 1);
+    return 3;
 
 #undef push_host
 
@@ -875,9 +849,22 @@ PARSE_PORT:
     phead   = cur;
     portnum = 0;
 
+    // A colon may start a password. Validate the port only after ruling out
+    // userinfo, including passwords containing large numbers or more colons.
+    if (!userinfo && url[head] != '[') {
+        size_t pos = cur;
+        for (; pos < urllen && url[pos] != '/' && url[pos] != '?' &&
+               url[pos] != '#';
+             pos++) {
+            if (url[pos] == '@') {
+                goto PARSE_PASSWORD;
+            }
+        }
+    }
+
 #define push_hostport()                                                        \
     do {                                                                       \
-        if (cur - head > 2) {                                                  \
+        if (tail > head || cur > phead) {                                      \
             lauxh_pushlstr2tbl(L, "hostname", src + head, tail - head);        \
             if (cur - phead) {                                                 \
                 lauxh_pushlstr2tbl(L, "host", src + head, cur - head);         \
@@ -941,7 +928,6 @@ PARSE_PASSWORD:
         switch (URIC[url[cur]]) {
         // illegal byte sequence
         case 0:
-        case ':':
         case '/':
         case '?':
         case '#':
@@ -953,7 +939,8 @@ PARSE_PASSWORD:
             lauxh_pushlstr2tbl(L, "userinfo", src + head, cur - head);
             lauxh_pushlstr2tbl(L, "user", src + head, tail - head);
             lauxh_pushlstr2tbl(L, "password", src + phead, cur - phead);
-            userinfo = c;
+            userinfo      = cur;
+            omit_hostname = 0;
             cur++;
             goto PARSE_HOST;
 

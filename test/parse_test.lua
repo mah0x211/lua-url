@@ -383,10 +383,10 @@ function testcase.parse_host()
     })
 
     -- test that return an error if invalid host format
-    s = 'http://$localhost'
+    s = 'http://|localhost'
     u, cur, err = parse(s)
     assert.equal(string.sub(s, 1, cur), 'http://')
-    assert.equal(err, '$')
+    assert.equal(err, '|')
     assert.equal(u, {
         scheme = 'http',
     })
