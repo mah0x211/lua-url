@@ -56,6 +56,8 @@ decode a percent-encoded string.
 
 Only `%HH` escapes with two hexadecimal digits are accepted. Nonstandard `%uXXXX` escapes and malformed percent sequences return `nil` and the 1-based position of the offending `%`.
 
+> **NOTE:** Versions before 2.2.0 incorrectly accepted `%uXXXX` escapes, which are not part of percent-encoding. This bug was fixed in 2.2.0.
+
 Decoding operates on bytes, including NUL, and does not validate UTF-8.
 
 - `decode_uri` decodes percent-encoded characters except `#$&+,/:;=?@`.
