@@ -184,3 +184,16 @@ print(dump({
 }
 --]]
 ```
+
+## Benchmark
+
+Install `testcase` to provide `testcase.timer`, then run from the repository root:
+
+```sh
+luarocks install testcase
+lua bench/perfcheck.lua 10000
+```
+
+The loop count defaults to 10000. Each loop performs three encode/decode pairs.
+The script checks that both implementations produce the same results, then
+prints the elapsed time for the pure Lua implementation and the url module.
